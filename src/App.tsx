@@ -14,9 +14,8 @@ export function App() {
     sessionStorage.getItem('admin_auth_token') === 'true'
   );
 
-  const [userGender, setUserGender] = useState<'male' | 'female' | ''>(
-    () => (localStorage.getItem('voice_user_gender') as 'male' | 'female') || ''
-  );
+  // User gender is strictly derived from server, not blindly trusted from localStorage
+  const [userGender, setUserGender] = useState<'male' | 'female' | ''>('');
   const [showGenderModal, setShowGenderModal] = useState(false);
 
   // Filter & Search states
@@ -31,13 +30,17 @@ export function App() {
   const [genderChangeCount, setGenderChangeCount] = useState(0);
   const remainingGenderChanges = Math.max(0, MAX_GENDER_CHANGES_PER_DAY - genderChangeCount);
 
-  // Sync profile on mount (Prevents localStorage tampering)
+  // Sync profile on mount (Strict server source of truth)
   const syncGenderLimit = async () => {
     const profile = await syncDeviceGenderProfile();
     setGenderChangeCount(profile.changeCount);
     if (profile.assignedGender) {
       setUserGender(profile.assignedGender);
-    } else if (!userGender) {
+      // เขียนค่ากลับลง localStorage ให้ตรงกับ server ป้องกันการปลอมแปลง
+      localStorage.setItem('voice_user_gender', profile.assignedGender);
+    } else {
+      setUserGender('');
+      localStorage.removeItem('voice_user_gender');
       setShowGenderModal(true);
     }
   };
