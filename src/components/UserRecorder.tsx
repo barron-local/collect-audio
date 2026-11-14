@@ -426,10 +426,6 @@ export const UserRecorder: React.FC<Props> = ({
               <p className="text-xs text-[#787774] mt-3">กำลังประมวลผลไฟล์ MP3...</p>
             )}
 
-            {errorMessage && (
-              <p className="text-xs text-[#eb5757] mt-3">{errorMessage}</p>
-            )}
-
             {uploadSuccess && (
               <p className="text-xs text-[#2b784c] mt-3">บันทึกเสียงเข้าสู่โฟลเดอร์เรียบร้อยแล้ว</p>
             )}
