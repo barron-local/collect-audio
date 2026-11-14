@@ -197,10 +197,10 @@ export const AdminDashboard: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Delete Confirmation Modal (Notion Style) */}
+      {/* Delete Confirmation Modal (Highest z-index z-60) */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 bg-[#37352f]/30 backdrop-blur-[2px] flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white border border-[#e9e9e7] rounded-lg max-w-sm w-full p-6 shadow-lg">
+        <div className="fixed inset-0 z-60 bg-[#37352f]/40 backdrop-blur-[2px] flex items-center justify-center p-4">
+          <div className="bg-white border border-[#e9e9e7] rounded-lg max-w-sm w-full p-6 shadow-2xl">
             <div className="flex items-start gap-3 mb-4">
               <div className="p-2 rounded bg-[#eb5757]/10 text-[#eb5757] shrink-0 mt-0.5">
                 <AlertTriangle className="w-4 h-4" />
