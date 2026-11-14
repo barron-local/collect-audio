@@ -46,32 +46,24 @@ function getLocalRecords(): AudioRecord[] {
   }
 }
 
-// 1. Get all topics with counts (Checks both 'topics' and fallback 'campaigns' table)
+// 1. Get all topics with counts (Using 'topics' table only)
 export async function getTopics(): Promise<Topic[]> {
   if (isSupabaseConfigured && supabase) {
-    // Try querying 'topics', fallback to 'campaigns' if user hasn't renamed table yet
-    let topicData: any[] = [];
     const { data: topics, error: topicErr } = await supabase
       .from('topics')
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (!topicErr && topics) {
-      topicData = topics;
-    } else {
-      // Fallback to campaigns
-      const { data: camps } = await supabase
-        .from('campaigns')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (camps) topicData = camps;
+    if (topicErr) {
+      console.warn('[Supabase] Warning fetching topics:', topicErr.message);
+      return getLocalTopics();
     }
 
     const { data: recs } = await supabase
       .from('audio_records')
       .select('*');
 
-    return topicData.map((item: any) => {
+    return (topics || []).map((item: any) => {
       const topicRecords = (recs || []).filter(
         (r: any) => r.topic_id === item.id || r.campaign_id === item.id
       );
@@ -107,27 +99,18 @@ export async function getTopics(): Promise<Topic[]> {
 // 2. Get topic details with recordings
 export async function getTopicDetails(topicId: string): Promise<Topic> {
   if (isSupabaseConfigured && supabase) {
-    let item: any = null;
-    const { data: topic } = await supabase
+    const { data: topic, error } = await supabase
       .from('topics')
       .select('*')
       .eq('id', topicId)
       .single();
 
-    if (topic) {
-      item = topic;
-    } else {
-      const { data: camp } = await supabase
-        .from('campaigns')
-        .select('*')
-        .eq('id', topicId)
-        .single();
-      item = camp;
+    if (error || !topic) {
+      const local = getLocalTopics().find(t => t.id === topicId);
+      if (local) return local;
+      throw new Error('ไม่พบประกาศ');
     }
 
-    if (!item) throw new Error('ไม่พบหัวข้อนี้');
-
-    // Query audio_records for this topic
     const { data: recs } = await supabase
       .from('audio_records')
       .select('*')
@@ -135,12 +118,12 @@ export async function getTopicDetails(topicId: string): Promise<Topic> {
       .order('recorded_at', { ascending: false });
 
     return {
-      id: item.id,
-      title: item.title,
-      description: item.description || '',
-      textToRead: item.text_to_read,
-      targetGender: (item.target_gender as 'all' | 'male' | 'female') || 'all',
-      createdAt: item.created_at,
+      id: topic.id,
+      title: topic.title,
+      description: topic.description || '',
+      textToRead: topic.text_to_read,
+      targetGender: (topic.target_gender as 'all' | 'male' | 'female') || 'all',
+      createdAt: topic.created_at,
       records: (recs || []).map((r: any) => ({
         id: r.id,
         topicId: r.topic_id || r.campaign_id,
@@ -157,7 +140,7 @@ export async function getTopicDetails(topicId: string): Promise<Topic> {
 
   const topics = getLocalTopics();
   const topic = topics.find(t => t.id === topicId);
-  if (!topic) throw new Error('ไม่พบหัวข้อนี้');
+  if (!topic) throw new Error('ไม่พบประกาศ');
 
   const recs = getLocalRecords().filter(r => r.topicId === topicId);
   return {
@@ -193,10 +176,10 @@ export async function createTopic(
       created_at: newTopic.createdAt
     };
 
-    // Try inserting into 'topics', fallback to 'campaigns'
     const { error } = await supabase.from('topics').insert(payload);
     if (error) {
-      await supabase.from('campaigns').insert(payload);
+      console.error('[Supabase] Insert topic error:', error);
+      throw new Error(error.message);
     }
     return newTopic;
   }
@@ -228,9 +211,7 @@ export async function updateTopic(
     };
 
     const { error } = await supabase.from('topics').update(payload).eq('id', id);
-    if (error) {
-      await supabase.from('campaigns').update(payload).eq('id', id);
-    }
+    if (error) throw new Error(error.message);
     return;
   }
 
@@ -251,7 +232,6 @@ export async function updateTopic(
 // 5. Delete topic
 export async function deleteTopic(topicId: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
-    // Delete associated files from storage
     const { data: recs } = await supabase
       .from('audio_records')
       .select('filename')
@@ -265,9 +245,7 @@ export async function deleteTopic(topicId: string): Promise<void> {
     }
 
     const { error } = await supabase.from('topics').delete().eq('id', topicId);
-    if (error) {
-      await supabase.from('campaigns').delete().eq('id', topicId);
-    }
+    if (error) throw new Error(error.message);
     return;
   }
 
@@ -310,7 +288,6 @@ export async function uploadRecording(params: {
 
     const fileUrl = urlData?.publicUrl || '';
 
-    // Insert into audio_records (support topic_id and campaign_id)
     const recordPayload: any = {
       id: recId,
       topic_id: topicId,
@@ -325,10 +302,8 @@ export async function uploadRecording(params: {
 
     const { error: insertError } = await supabase.from('audio_records').insert(recordPayload);
     if (insertError) {
-      // Fallback if column is still campaign_id
-      delete recordPayload.topic_id;
-      recordPayload.campaign_id = topicId;
-      await supabase.from('audio_records').insert(recordPayload);
+      console.error('[Supabase] Insert audio record error:', insertError);
+      throw new Error(insertError.message);
     }
 
     return {

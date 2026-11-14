@@ -1,8 +1,11 @@
 -- ==============================================================================
--- สคริปต์สำหรับสร้างฐานข้อมูล Voice Collector ใน Supabase (ใช้ชื่อ topics แทน campaigns)
+-- คำสั่งแก้ไขปัญหา RLS และชื่อตาราง (รันใน Supabase SQL Editor ได้ทันที)
 -- ==============================================================================
 
--- 1. สร้างตาราง topics (สำหรับเก็บหัวข้อ/ประโยคที่ต้องการให้อัดเสียง)
+-- 1. เปลี่ยนชื่อตาราง campaigns เป็น topics (ถ้ามี)
+ALTER TABLE IF EXISTS campaigns RENAME TO topics;
+
+-- 2. สร้างตาราง topics ถ้ายังไม่มี
 CREATE TABLE IF NOT EXISTS topics (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
@@ -12,7 +15,22 @@ CREATE TABLE IF NOT EXISTS topics (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. สร้างตาราง audio_records (สำหรับเก็บบันทึกเสียงของผู้ใช้งาน)
+-- เพิ่มคอลัมน์ target_gender
+ALTER TABLE topics ADD COLUMN IF NOT EXISTS target_gender TEXT DEFAULT 'all';
+
+-- 3. จัดการคอลัมน์ใน audio_records ให้เป็น topic_id
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 
+    FROM information_schema.columns 
+    WHERE table_name = 'audio_records' AND column_name = 'campaign_id'
+  ) THEN
+    ALTER TABLE audio_records RENAME COLUMN campaign_id TO topic_id;
+  END IF;
+END $$;
+
+-- สร้างตาราง audio_records ถ้ายังไม่มี
 CREATE TABLE IF NOT EXISTS audio_records (
   id TEXT PRIMARY KEY,
   topic_id TEXT NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
@@ -25,17 +43,24 @@ CREATE TABLE IF NOT EXISTS audio_records (
   recorded_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. เพิ่ม Index เพื่อให้ค้นหาได้รวดเร็ว
-CREATE INDEX IF NOT EXISTS idx_audio_records_topic_id ON audio_records(topic_id);
-CREATE INDEX IF NOT EXISTS idx_audio_records_gender ON audio_records(gender);
+-- 4. แก้ปัญหา RLS ในตาราง topics และ audio_records (อนุญาตให้อ่านและเขียนได้)
+ALTER TABLE topics DISABLE ROW LEVEL SECURITY;
+ALTER TABLE audio_records DISABLE ROW LEVEL SECURITY;
 
--- 4. ตั้งค่า Storage Bucket ใน Supabase Storage
--- ไปที่ Supabase Dashboard -> Storage -> สร้าง Bucket ชื่อ: audio-recordings (ตั้งเป็น Public bucket)
+-- 5. แก้ปัญหา Storage RLS (อนุญาตให้อัปโหลดไฟล์และดาวน์โหลดจาก audio-recordings bucket ได้อย่างอิสระ)
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('audio-recordings', 'audio-recordings', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
 
--- ==============================================================================
--- *สำหรับผู้ที่เคยสร้างตาราง campaigns เดิมไว้แล้ว และต้องการเปลี่ยนชื่อมาเป็น topics*
--- ให้รันคำสั่ง Migration ด้านล่างนี้:
--- ==============================================================================
--- ALTER TABLE IF EXISTS campaigns RENAME TO topics;
--- ALTER TABLE IF EXISTS audio_records RENAME COLUMN campaign_id TO topic_id;
--- ==============================================================================
+-- สร้าง Policy ให้ Storage Bucket สามารถ Upload / Read ได้โดยไม่มี RLS บล็อก
+DROP POLICY IF EXISTS "Public Access" ON storage.objects;
+DROP POLICY IF EXISTS "Allow All Uploads" ON storage.objects;
+
+CREATE POLICY "Public Access" ON storage.objects 
+FOR SELECT USING (bucket_id = 'audio-recordings');
+
+CREATE POLICY "Allow All Uploads" ON storage.objects 
+FOR INSERT WITH CHECK (bucket_id = 'audio-recordings');
+
+CREATE POLICY "Allow All Deletes" ON storage.objects 
+FOR DELETE USING (bucket_id = 'audio-recordings');
