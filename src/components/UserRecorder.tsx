@@ -233,7 +233,7 @@ export const UserRecorder: React.FC<Props> = ({
           <input
             type="text"
             disabled={!isGenderAllowed}
-            placeholder="ระบุชื่อของคุณ (เว้นว่างได้)"
+            placeholder="ระบุชื่อของคุณ (ไม่บังคับ)"
             value={speakerName}
             onChange={(e) => setSpeakerName(e.target.value)}
             className="w-full px-3 py-1.5 text-sm border border-[#e9e9e7] rounded outline-none focus:border-[#2383e2] text-[#37352f] disabled:bg-[#f7f6f3] disabled:text-[#787774]"
