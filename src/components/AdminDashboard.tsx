@@ -6,7 +6,6 @@ import {
   Pencil,
   Trash2, 
   Download, 
-  RefreshCw,
   Folder,
   X,
   AlertTriangle
@@ -223,14 +222,6 @@ export const AdminDashboard: React.FC<Props> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={onRefresh}
-            className="p-1.5 text-[#787774] hover:text-[#37352f] hover:bg-[#f7f6f3] rounded transition cursor-pointer"
-            title="รีเฟรช"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-          </button>
-
           <button
             onClick={openCreateModal}
             className="inline-flex items-center px-3 py-1.5 text-xs bg-[#37352f] hover:bg-[#201f1d] text-white font-medium rounded transition cursor-pointer"
