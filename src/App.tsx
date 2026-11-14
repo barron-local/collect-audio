@@ -249,7 +249,7 @@ export function App() {
                 </div>
 
                 {/* Gender Dropdown Filter (Notion Style) */}
-                <div className="self-start sm:self-auto">
+                <div className="self-end sm:self-auto">
                   <select
                     value={genderFilter}
                     onChange={(e) => setGenderFilter(e.target.value as any)}
