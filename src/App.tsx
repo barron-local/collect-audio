@@ -6,7 +6,7 @@ import { UserRecorder } from './components/UserRecorder';
 import { GenderModal } from './components/GenderModal';
 import { getCampaigns } from './utils/dataService';
 import { Folder, Search, X, ArrowLeft } from 'lucide-react';
-import { getGenderChangeCount, incrementGenderChangeCount, MAX_GENDER_CHANGES_PER_DAY } from './utils/deviceLimit';
+import { syncDeviceGenderProfile, saveAssignedGender, MAX_GENDER_CHANGES_PER_DAY } from './utils/deviceLimit';
 
 export function App() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
@@ -31,37 +31,35 @@ export function App() {
   const [genderChangeCount, setGenderChangeCount] = useState(0);
   const remainingGenderChanges = Math.max(0, MAX_GENDER_CHANGES_PER_DAY - genderChangeCount);
 
-  // Sync count on mount and when modal opens
+  // Sync profile on mount and when modal opens (Prevents localStorage tampering)
   const syncGenderLimit = async () => {
-    const count = await getGenderChangeCount();
-    setGenderChangeCount(count);
+    const profile = await syncDeviceGenderProfile();
+    setGenderChangeCount(profile.changeCount);
+    if (profile.assignedGender) {
+      setUserGender(profile.assignedGender);
+      setShowGenderModal(false);
+    } else if (!userGender) {
+      setShowGenderModal(true);
+    }
   };
 
   useEffect(() => {
     syncGenderLimit();
   }, [showGenderModal]);
 
-  useEffect(() => {
-    const saved = localStorage.getItem('voice_user_gender');
-    if (!saved) {
-      setShowGenderModal(true);
-    }
-  }, []);
-
   const handleSelectGender = async (gender: 'male' | 'female') => {
-    // ถ้าเคยเลือกเพศแล้ว และกำลังเปลี่ยนเป็นเพศใหม่ ให้บันทึกโควตา
-    if (userGender && userGender !== gender) {
-      const currentCount = await getGenderChangeCount();
-      if (currentCount >= MAX_GENDER_CHANGES_PER_DAY) {
-        setGenderChangeCount(currentCount);
+    const isChange = Boolean(userGender && userGender !== gender);
+    if (isChange) {
+      const profile = await syncDeviceGenderProfile();
+      if (profile.changeCount >= MAX_GENDER_CHANGES_PER_DAY) {
+        setGenderChangeCount(profile.changeCount);
         return;
       }
-      const updatedCount = await incrementGenderChangeCount();
-      setGenderChangeCount(updatedCount);
     }
 
+    const updatedCount = await saveAssignedGender(gender, isChange);
+    setGenderChangeCount(updatedCount);
     setUserGender(gender);
-    localStorage.setItem('voice_user_gender', gender);
     setShowGenderModal(false);
   };
 

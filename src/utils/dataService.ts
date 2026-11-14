@@ -1,51 +1,6 @@
 import { supabase, isSupabaseConfigured, BUCKET_NAME } from './supabase';
 import type { Topic, AudioRecord } from '../types';
 
-const LOCAL_TOPICS_KEY = 'voice_collector_topics';
-const LOCAL_RECORDS_KEY = 'voice_collector_records';
-
-const defaultTopics: Topic[] = [
-  {
-    id: 'topic-1',
-    title: 'ประโยคทดสอบพื้นฐาน 1',
-    description: 'ประโยคภาษาไทยสำหรับการฝึกโมเดลเสียงสังเคราะห์และการรู้จำเสียงพูด',
-    textToRead: 'สวัสดีครับ ยินดีต้อนรับเข้าสู่ระบบบันทึกเสียงเพื่อพัฒนาโมเดลปัญญาประดิษฐ์',
-    targetGender: 'all',
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'topic-2',
-    title: 'ประโยคคำถามและบริการ',
-    description: 'ประโยคสอบถามข้อมูลทั่วไป',
-    textToRead: 'วันนี้สภาพอากาศเป็นอย่างไรบ้าง และมีโปรโมชั่นอะไรน่าสนใจบ้างครับ',
-    targetGender: 'female',
-    createdAt: new Date().toISOString()
-  }
-];
-
-function getLocalTopics(): Topic[] {
-  const data = localStorage.getItem(LOCAL_TOPICS_KEY);
-  if (!data) {
-    localStorage.setItem(LOCAL_TOPICS_KEY, JSON.stringify(defaultTopics));
-    return defaultTopics;
-  }
-  try {
-    return JSON.parse(data);
-  } catch {
-    return defaultTopics;
-  }
-}
-
-function getLocalRecords(): AudioRecord[] {
-  const data = localStorage.getItem(LOCAL_RECORDS_KEY);
-  if (!data) return [];
-  try {
-    return JSON.parse(data);
-  } catch {
-    return [];
-  }
-}
-
 // 1. Get all topics with counts (Using 'topics' table only)
 export async function getTopics(): Promise<Topic[]> {
   if (isSupabaseConfigured && supabase) {
@@ -56,44 +11,34 @@ export async function getTopics(): Promise<Topic[]> {
 
     if (topicErr) {
       console.warn('[Supabase] Warning fetching topics:', topicErr.message);
-      return getLocalTopics();
+      return [];
     }
 
-    const { data: recs } = await supabase
+    // Query record counts
+    const { data: recordsData } = await supabase
       .from('audio_records')
-      .select('*');
+      .select('topic_id');
 
-    return (topics || []).map((item: any) => {
-      const topicRecords = (recs || []).filter(
-        (r: any) => r.topic_id === item.id || r.campaign_id === item.id
-      );
-      return {
-        id: item.id,
-        title: item.title,
-        description: item.description || '',
-        textToRead: item.text_to_read,
-        targetGender: (item.target_gender as 'all' | 'male' | 'female') || 'all',
-        createdAt: item.created_at,
-        recordingCount: topicRecords.length,
-        maleCount: topicRecords.filter((r: any) => r.gender === 'male').length,
-        femaleCount: topicRecords.filter((r: any) => r.gender === 'female').length
-      };
-    });
+    const counts: Record<string, number> = {};
+    if (recordsData) {
+      recordsData.forEach((r: any) => {
+        const id = r.topic_id;
+        if (id) counts[id] = (counts[id] || 0) + 1;
+      });
+    }
+
+    return (topics || []).map((t: any) => ({
+      id: t.id,
+      title: t.title,
+      description: t.description || '',
+      textToRead: t.text_to_read,
+      targetGender: (t.target_gender as 'all' | 'male' | 'female') || 'all',
+      createdAt: t.created_at,
+      recordingCount: counts[t.id] || 0
+    }));
   }
 
-  // Fallback to local storage
-  const topics = getLocalTopics();
-  const recs = getLocalRecords();
-  return topics.map(t => {
-    const topicRecords = recs.filter(r => r.topicId === t.id);
-    return {
-      ...t,
-      targetGender: t.targetGender || 'all',
-      recordingCount: topicRecords.length,
-      maleCount: topicRecords.filter(r => r.gender === 'male').length,
-      femaleCount: topicRecords.filter(r => r.gender === 'female').length
-    };
-  });
+  return [];
 }
 
 // 2. Get topic details with recordings
@@ -106,8 +51,6 @@ export async function getTopicDetails(topicId: string): Promise<Topic> {
       .single();
 
     if (error || !topic) {
-      const local = getLocalTopics().find(t => t.id === topicId);
-      if (local) return local;
       throw new Error('ไม่พบประกาศ');
     }
 
@@ -141,16 +84,7 @@ export async function getTopicDetails(topicId: string): Promise<Topic> {
     };
   }
 
-  const topics = getLocalTopics();
-  const topic = topics.find(t => t.id === topicId);
-  if (!topic) throw new Error('ไม่พบประกาศ');
-
-  const recs = getLocalRecords().filter(r => r.topicId === topicId);
-  return {
-    ...topic,
-    targetGender: topic.targetGender || 'all',
-    records: recs
-  };
+  throw new Error('Supabase is not configured');
 }
 
 // 3. Create topic
@@ -187,10 +121,7 @@ export async function createTopic(
     return newTopic;
   }
 
-  const topics = getLocalTopics();
-  topics.unshift(newTopic);
-  localStorage.setItem(LOCAL_TOPICS_KEY, JSON.stringify(topics));
-  return newTopic;
+  throw new Error('Supabase is not configured');
 }
 
 // 4. Update topic
@@ -218,18 +149,7 @@ export async function updateTopic(
     return;
   }
 
-  const topics = getLocalTopics();
-  const index = topics.findIndex(t => t.id === id);
-  if (index !== -1) {
-    topics[index] = {
-      ...topics[index],
-      title: title.trim(),
-      description: (description || '').trim(),
-      textToRead: textToRead.trim(),
-      targetGender
-    };
-    localStorage.setItem(LOCAL_TOPICS_KEY, JSON.stringify(topics));
-  }
+  throw new Error('Supabase is not configured');
 }
 
 // 5. Delete topic
@@ -255,10 +175,7 @@ export async function deleteTopic(topicId: string): Promise<void> {
     return;
   }
 
-  const topics = getLocalTopics().filter(t => t.id !== topicId);
-  const recs = getLocalRecords().filter(r => r.topicId !== topicId);
-  localStorage.setItem(LOCAL_TOPICS_KEY, JSON.stringify(topics));
-  localStorage.setItem(LOCAL_RECORDS_KEY, JSON.stringify(recs));
+  throw new Error('Supabase is not configured');
 }
 
 // 6. Upload Audio (.mp3)
@@ -332,28 +249,7 @@ export async function uploadRecording(params: {
     };
   }
 
-  const arrayBuffer = await mp3Blob.arrayBuffer();
-  const base64 = btoa(
-    new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
-  );
-  const dataUrl = `data:audio/mp3;base64,${base64}`;
-
-  const record: AudioRecord = {
-    id: recId,
-    topicId,
-    speakerName: cleanSpeaker,
-    gender,
-    durationSeconds,
-    filename: `audio-${recId}.mp3`,
-    fileUrl: dataUrl,
-    fileSize: mp3Blob.size,
-    recordedAt: new Date().toISOString()
-  };
-
-  const recs = getLocalRecords();
-  recs.unshift(record);
-  localStorage.setItem(LOCAL_RECORDS_KEY, JSON.stringify(recs));
-  return record;
+  throw new Error('Supabase is not configured');
 }
 
 // 7. Delete single recording
@@ -367,8 +263,7 @@ export async function deleteRecording(recordId: string, filename?: string): Prom
     return;
   }
 
-  const recs = getLocalRecords().filter(r => r.id !== recordId);
-  localStorage.setItem(LOCAL_RECORDS_KEY, JSON.stringify(recs));
+  throw new Error('Supabase is not configured');
 }
 
 // Backwards-compatible aliases

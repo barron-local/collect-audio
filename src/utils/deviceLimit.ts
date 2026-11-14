@@ -40,51 +40,62 @@ export function getCycleDateString(): string {
   return cycleTime.toISOString().slice(0, 10); // YYYY-MM-DD
 }
 
-// 2. Fetch today's gender change count (Syncs Supabase & Local fallback)
-export async function getGenderChangeCount(): Promise<number> {
+// 2. Fetch server-verified assigned gender and today's gender change count
+export async function syncDeviceGenderProfile(): Promise<{ assignedGender: 'male' | 'female' | ''; changeCount: number }> {
   const cycleDate = getCycleDateString();
   const deviceId = getOrCreateDeviceId();
+  let serverGender: 'male' | 'female' | '' = '';
+  let serverCount = 0;
 
-  // Try fetching from Supabase table if available
   if (isSupabaseConfigured && supabase) {
     try {
       const { data, error } = await supabase
         .from('device_gender_limits')
-        .select('change_count')
+        .select('assigned_gender, change_count')
         .eq('device_id', deviceId)
         .eq('change_date', cycleDate)
         .maybeSingle();
 
       if (!error && data) {
-        // sync back to local storage
-        localStorage.setItem(LOCAL_QUOTA_KEY, JSON.stringify({ count: data.change_count, date: cycleDate }));
-        return data.change_count || 0;
+        if (data.assigned_gender === 'male' || data.assigned_gender === 'female') {
+          serverGender = data.assigned_gender;
+          localStorage.setItem('voice_user_gender', serverGender);
+        }
+        serverCount = data.change_count || 0;
+        localStorage.setItem(LOCAL_QUOTA_KEY, JSON.stringify({ count: serverCount, date: cycleDate }));
+        return { assignedGender: serverGender, changeCount: serverCount };
       }
     } catch (err) {
-      console.warn('Supabase device quota fetch fallback to local:', err);
+      console.warn('Supabase device profile sync fallback:', err);
     }
   }
 
-  // Local fallback
-  const raw = localStorage.getItem(LOCAL_QUOTA_KEY);
-  if (!raw) return 0;
-  try {
-    const parsed = JSON.parse(raw);
-    if (parsed.date === cycleDate) {
-      return parsed.count || 0;
-    }
-    return 0;
-  } catch {
-    return 0;
+  // Fallback to local
+  const localSaved = (localStorage.getItem('voice_user_gender') as 'male' | 'female') || '';
+  const localQuotaRaw = localStorage.getItem(LOCAL_QUOTA_KEY);
+  let localCount = 0;
+  if (localQuotaRaw) {
+    try {
+      const p = JSON.parse(localQuotaRaw);
+      if (p.date === cycleDate) localCount = p.count || 0;
+    } catch {}
   }
+
+  return { assignedGender: localSaved, changeCount: localCount };
 }
 
-// 3. Increment gender change count
-export async function incrementGenderChangeCount(): Promise<number> {
+// 3. Fetch today's gender change count (Syncs Supabase & Local fallback)
+export async function getGenderChangeCount(): Promise<number> {
+  const profile = await syncDeviceGenderProfile();
+  return profile.changeCount;
+}
+
+// 4. Update gender assignment and increment quota on Supabase
+export async function saveAssignedGender(gender: 'male' | 'female', isChange: boolean): Promise<number> {
   const cycleDate = getCycleDateString();
   const deviceId = getOrCreateDeviceId();
   const currentCount = await getGenderChangeCount();
-  const newCount = currentCount + 1;
+  const newCount = isChange ? currentCount + 1 : currentCount;
 
   // 1. Update Supabase
   if (isSupabaseConfigured && supabase) {
@@ -95,11 +106,12 @@ export async function incrementGenderChangeCount(): Promise<number> {
           device_id: deviceId,
           change_date: cycleDate,
           change_count: newCount,
+          assigned_gender: gender,
           last_updated: new Date().toISOString()
         }, { onConflict: 'device_id,change_date' });
 
       if (error) {
-        console.warn('[Supabase] Warning updating device_gender_limits:', error.message);
+        console.warn('[Supabase] Warning updating assigned_gender:', error.message);
       }
     } catch (e) {
       console.warn('Failed to upsert to device_gender_limits:', e);
@@ -107,6 +119,7 @@ export async function incrementGenderChangeCount(): Promise<number> {
   }
 
   // 2. Update local storage
+  localStorage.setItem('voice_user_gender', gender);
   localStorage.setItem(LOCAL_QUOTA_KEY, JSON.stringify({ count: newCount, date: cycleDate }));
   return newCount;
 }
