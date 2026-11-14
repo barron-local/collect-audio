@@ -31,13 +31,12 @@ export function App() {
   const [genderChangeCount, setGenderChangeCount] = useState(0);
   const remainingGenderChanges = Math.max(0, MAX_GENDER_CHANGES_PER_DAY - genderChangeCount);
 
-  // Sync profile on mount and when modal opens (Prevents localStorage tampering)
+  // Sync profile on mount (Prevents localStorage tampering)
   const syncGenderLimit = async () => {
     const profile = await syncDeviceGenderProfile();
     setGenderChangeCount(profile.changeCount);
     if (profile.assignedGender) {
       setUserGender(profile.assignedGender);
-      setShowGenderModal(false);
     } else if (!userGender) {
       setShowGenderModal(true);
     }
@@ -45,7 +44,7 @@ export function App() {
 
   useEffect(() => {
     syncGenderLimit();
-  }, [showGenderModal]);
+  }, []);
 
   const handleSelectGender = async (gender: 'male' | 'female') => {
     const isChange = Boolean(userGender && userGender !== gender);
