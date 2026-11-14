@@ -463,7 +463,7 @@ export const AdminDashboard: React.FC<Props> = ({
             {campaigns.length === 0 && (
               <tr>
                 <td colSpan={5} className="py-8 text-center text-[#787774]">
-                  ยังไม่มีข้อมูลประกาศคำ
+                  ยังไม่มีข้อมูลประกาศ
                 </td>
               </tr>
             )}
