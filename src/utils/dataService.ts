@@ -111,12 +111,12 @@ export async function getTopicDetails(topicId: string): Promise<Topic> {
       throw new Error('ไม่พบประกาศ');
     }
 
-    // Query audio_records for this topic
+    // Query audio_records for this topic (เรียงจากคนที่เพิ่มก่อนไปยังคนเพิ่มหลัง: ascending: true)
     const { data: recsByTopic } = await supabase
       .from('audio_records')
       .select('*')
       .eq('topic_id', topicId)
-      .order('recorded_at', { ascending: false });
+      .order('recorded_at', { ascending: true });
 
     const recs = recsByTopic || [];
 
