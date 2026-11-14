@@ -153,6 +153,25 @@ export const AdminDashboard: React.FC<Props> = ({
     }
   };
 
+  const handleDownloadSingleFile = async (url: string, filename: string) => {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Network response was not ok');
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err: any) {
+      // Fallback: เปิดแท็บใหม่ถ้า fetch ติดขัด
+      window.open(url, '_blank');
+    }
+  };
+
   const handleDownloadZip = async (filter: 'all' | 'male' | 'female') => {
     if (!campaignDetails) return;
     setIsExportingZip(true);
@@ -522,14 +541,17 @@ export const AdminDashboard: React.FC<Props> = ({
                       <audio controls controlsList="nodownload noplaybackrate" src={rec.fileUrl || ''} className="h-8 w-60 max-w-full" />
 
                       {rec.fileUrl && (
-                        <a
-                          href={rec.fileUrl}
-                          download={`${rec.gender}_${rec.speakerName}_${rec.id}.mp3`}
-                          className="text-[#787774] hover:text-[#37352f] p-1 rounded hover:bg-[#f7f6f3]"
-                          title="ดาวน์โหลดไฟล์เดียว"
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadSingleFile(
+                            rec.fileUrl!, 
+                            `${rec.gender}_${(rec.speakerName || 'unnamed').replace(/\s+/g, '_')}_${rec.id}.mp3`
+                          )}
+                          className="text-[#787774] hover:text-[#37352f] p-1.5 rounded hover:bg-[#f7f6f3] cursor-pointer transition"
+                          title="ดาวน์โหลดไฟล์ (.mp3)"
                         >
                           <Download className="w-3.5 h-3.5" />
-                        </a>
+                        </button>
                       )}
 
                       <button
