@@ -368,8 +368,10 @@ export const UserRecorder: React.FC<Props> = ({
                           {rec.gender === 'female' ? 'หญิง' : 'ชาย'}
                         </span>
                       </div>
-                      <div className="text-[11px] text-[#9b9a97] mt-0.5">
-                        {rec.durationSeconds}s • {new Date(rec.recordedAt).toLocaleDateString()}
+                      <div className="flex items-center gap-2 text-[11px] text-[#9b9a97] mt-0.5">
+                        <span className="font-mono text-[#787774]">{rec.durationSeconds} วินาที</span>
+                        <span className="text-[#d3d2cf]">|</span>
+                        <span>{new Date(rec.recordedAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
                     </div>
                   </div>
