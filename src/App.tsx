@@ -5,7 +5,7 @@ import { AdminPinAuth } from './components/AdminPinAuth';
 import { UserRecorder } from './components/UserRecorder';
 import { GenderModal } from './components/GenderModal';
 import { getCampaigns } from './utils/dataService';
-import { Folder, Search, X } from 'lucide-react';
+import { Folder, Search, X, ArrowLeft, FileQuestion } from 'lucide-react';
 
 export function App() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
@@ -164,22 +164,33 @@ export function App() {
       {/* Main Content Area */}
       <main className="flex-1">
         {isNotFoundRoute ? (
-          <div className="min-h-[70vh] flex flex-col items-center justify-center px-4 text-center">
-            <div className="w-12 h-12 rounded-full bg-[#f7f6f3] border border-[#e9e9e7] flex items-center justify-center text-[#787774] text-sm font-mono mb-4">
-              404
+          <div className="min-h-[75vh] flex items-center justify-center px-4">
+            <div className="w-full max-w-md border border-[#e9e9e7] rounded-lg p-8 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.02)] text-center">
+              <div className="w-12 h-12 mx-auto rounded-full bg-[#f7f6f3] border border-[#e9e9e7] flex items-center justify-center text-[#787774] mb-5">
+                <FileQuestion className="w-5 h-5 text-[#787774]" />
+              </div>
+
+              <div className="inline-block text-[11px] font-mono font-medium text-[#787774] px-2 py-0.5 rounded bg-[#f7f6f3] border border-[#e9e9e7] mb-3">
+                Error 404
+              </div>
+
+              <h1 className="text-xl font-semibold text-[#37352f] tracking-tight mb-2">
+                ไม่พบหน้าที่คุณต้องการ
+              </h1>
+              
+              <p className="text-xs text-[#787774] leading-relaxed mb-6 max-w-xs mx-auto">
+                เส้นทาง <code className="px-1.5 py-0.5 rounded bg-[#f7f6f3] border border-[#e9e9e7] text-[#37352f] font-mono text-[11px]">{currentPath}</code> อาจถูกย้ายหรือไม่มีอยู่ในระบบ
+              </p>
+
+              <div className="pt-5 border-t border-[#e9e9e7] flex justify-center">
+                <button
+                  onClick={() => navigateTo('/')}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#37352f] hover:bg-[#201f1d] text-white text-xs font-medium rounded transition cursor-pointer shadow-xs"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" /> กลับสู่หน้าหลัก
+                </button>
+              </div>
             </div>
-            <h1 className="text-xl font-bold text-[#37352f] tracking-tight mb-1.5">
-              ไม่พบหน้าที่คุณต้องการ
-            </h1>
-            <p className="text-xs text-[#787774] max-w-sm mb-6 leading-relaxed">
-              หน้าที่คุณกำลังพยายามเข้าถึงไม่มีอยู่จริงหรือถูกย้ายที่แล้ว
-            </p>
-            <button
-              onClick={() => navigateTo('/')}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#37352f] hover:bg-[#201f1d] text-white text-xs font-medium rounded transition cursor-pointer"
-            >
-              กลับสู่หน้าหลัก
-            </button>
           </div>
         ) : isAdminRoute ? (
           !isAdminAuthenticated ? (
