@@ -384,11 +384,11 @@ export const UserRecorder: React.FC<Props> = ({
                   </div>
 
                   {/* Audio Controls Only (Downloads reserved for Admin) */}
-                  <div className="w-full sm:w-auto">
+                  <div className="w-full sm:w-auto shrink-0 flex items-center justify-end">
                     <audio 
                       controls 
                       src={rec.fileUrl || ''} 
-                      className="h-8 w-full sm:w-56" 
+                      className="h-8 w-full sm:w-64 max-w-full" 
                     />
                   </div>
                 </div>
