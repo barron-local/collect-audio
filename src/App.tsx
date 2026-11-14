@@ -295,8 +295,8 @@ export function App() {
                           </div>
                         </div>
 
-                        <div className="text-right text-xs text-[#787774] shrink-0 font-mono pl-4">
-                          <div>{camp.recordingCount || 0} ไฟล์</div>
+                        <div className="text-right text-xs text-[#787774] shrink-0 font-normal pl-4">
+                          <div><span className="font-mono">{camp.recordingCount || 0}</span> ไฟล์ที่อัดเข้ามาแล้ว</div>
                         </div>
                       </div>
                     );
