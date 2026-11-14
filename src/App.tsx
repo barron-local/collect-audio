@@ -219,48 +219,18 @@ export function App() {
                   )}
                 </div>
 
-                {/* Gender Tabs Filter */}
-                <div className="flex items-center gap-1 self-start sm:self-auto text-xs">
-                  <button
-                    onClick={() => setGenderFilter('all')}
-                    className={`px-2.5 py-1 rounded transition cursor-pointer ${
-                      genderFilter === 'all'
-                        ? 'bg-[#37352f] text-white font-medium'
-                        : 'text-[#787774] hover:bg-[#f7f6f3]'
-                    }`}
+                {/* Gender Dropdown Filter (Notion Style) */}
+                <div className="self-start sm:self-auto">
+                  <select
+                    value={genderFilter}
+                    onChange={(e) => setGenderFilter(e.target.value as any)}
+                    className="py-1 px-2.5 text-xs bg-white border border-[#e9e9e7] rounded outline-none focus:border-[#2383e2] text-[#37352f] cursor-pointer hover:bg-[#f7f6f3] transition"
                   >
-                    ทั้งหมด
-                  </button>
-                  <button
-                    onClick={() => setGenderFilter('all_target')}
-                    className={`px-2.5 py-1 rounded transition cursor-pointer ${
-                      genderFilter === 'all_target'
-                        ? 'bg-[#37352f] text-white font-medium'
-                        : 'text-[#787774] hover:bg-[#f7f6f3]'
-                    }`}
-                  >
-                    ทั้ง 2 เพศ
-                  </button>
-                  <button
-                    onClick={() => setGenderFilter('male')}
-                    className={`px-2.5 py-1 rounded transition cursor-pointer ${
-                      genderFilter === 'male'
-                        ? 'bg-[#37352f] text-white font-medium'
-                        : 'text-[#787774] hover:bg-[#f7f6f3]'
-                    }`}
-                  >
-                    เฉพาะชาย
-                  </button>
-                  <button
-                    onClick={() => setGenderFilter('female')}
-                    className={`px-2.5 py-1 rounded transition cursor-pointer ${
-                      genderFilter === 'female'
-                        ? 'bg-[#37352f] text-white font-medium'
-                        : 'text-[#787774] hover:bg-[#f7f6f3]'
-                    }`}
-                  >
-                    เฉพาะหญิง
-                  </button>
+                    <option value="all">ทั้งหมด</option>
+                    <option value="all_target">ทั้ง 2 เพศ</option>
+                    <option value="male">เฉพาะชาย</option>
+                    <option value="female">เฉพาะหญิง</option>
+                  </select>
                 </div>
               </div>
 
