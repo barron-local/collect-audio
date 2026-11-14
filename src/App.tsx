@@ -7,6 +7,7 @@ import { GenderModal } from './components/GenderModal';
 import { getCampaigns } from './utils/dataService';
 import { Folder, Search, X, ArrowLeft } from 'lucide-react';
 import { saveVerifiedGender, verifyGenderIntegrity } from './utils/genderIntegrity';
+import { fetchServerGenderChangeCount, incrementServerGenderChangeCount, MAX_GENDER_CHANGES_PER_DAY } from './utils/deviceGenderLimit';
 
 export function App() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
@@ -28,6 +29,19 @@ export function App() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Server-backed Gender Change Quota
+  const [serverChangeCount, setServerChangeCount] = useState(0);
+  const remainingGenderChanges = Math.max(0, MAX_GENDER_CHANGES_PER_DAY - serverChangeCount);
+
+  const refreshQuota = async () => {
+    const count = await fetchServerGenderChangeCount();
+    setServerChangeCount(count);
+  };
+
+  useEffect(() => {
+    refreshQuota();
+  }, [showGenderModal]);
 
   // ตรวจสอบความถูกต้องของเพศเมื่อโหลดเข้าเว็บ (Anti-Tamper & Warning Message)
   useEffect(() => {
@@ -64,6 +78,17 @@ export function App() {
   }, []);
 
   const handleSelectGender = async (gender: 'male' | 'female') => {
+    // ถ้าเคยเลือกเพศอยู่แล้วและกดสลับเพศ ให้ตรวจและหักโควตาในฐานข้อมูล Supabase
+    if (userGender && userGender !== gender) {
+      const currentCount = await fetchServerGenderChangeCount();
+      if (currentCount >= MAX_GENDER_CHANGES_PER_DAY) {
+        setServerChangeCount(currentCount);
+        return;
+      }
+      const newCount = await incrementServerGenderChangeCount();
+      setServerChangeCount(newCount);
+    }
+
     setUserGender(gender);
     localStorage.setItem('voice_user_ever_selected', 'true');
     await saveVerifiedGender(gender);
@@ -189,6 +214,7 @@ export function App() {
           currentGender={userGender}
           onSelect={handleSelectGender}
           onClose={userGender ? () => setShowGenderModal(false) : undefined}
+          remainingChanges={remainingGenderChanges}
         />
       )}
 
