@@ -23,26 +23,35 @@ export function App() {
   // Filter & Search states
   const [genderFilter, setGenderFilter] = useState<'all' | 'all_target' | 'male' | 'female'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [tamperWarning, setTamperWarning] = useState<string | null>(null);
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // ตรวจสอบความถูกต้องของเพศเมื่อโหลดเข้าเว็บ (Anti-Tamper)
+  // ตรวจสอบความถูกต้องของเพศเมื่อโหลดเข้าเว็บ (Anti-Tamper & Warning Message)
   useEffect(() => {
     const checkTampering = async () => {
       const saved = localStorage.getItem('voice_user_gender');
+      const hasEverSelected = localStorage.getItem('voice_user_ever_selected') === 'true';
+
+      // กรณีที่ 1: เคยเลือกเพศแล้ว แต่ไปแอบลบค่าใน localStorage
+      if (!saved && hasEverSelected) {
+        setTamperWarning('ตรวจพบการพยายามลบข้อมูลเพศในระบบ ระบบรับรู้การกระทำทั้งหมดและคืนค่าเดิมให้เรียบร้อย');
+        setUserGender('male');
+        await saveVerifiedGender('male');
+        return;
+      }
+
       if (!saved) {
         setShowGenderModal(true);
         return;
       }
 
-      // ถ้ามีค่า แต่ Signature ไม่ตรง (เช่น แอบพิมพ์แก้ใน DevTools จาก male เป็น female)
+      // กรณีที่ 2: มีค่า แต่ Signature ไม่ตรง (แอบพิมพ์แก้ค่าใน DevTools)
       const isValid = await verifyGenderIntegrity(saved);
       if (!isValid) {
-        console.warn('[Security] Detected unauthorized localStorage gender tamper. Reverting.');
-        // ถ้าค่าเดิมคือ male แต่โดนแอบแก้เป็น female จะดึงค่าที่เคย verify ไว้กลับคืน
-        // หากไม่มี signature เลย ให้บังคับสลับกลับเป็น male อัตโนมัติและสร้าง signature ใหม่
+        setTamperWarning(`ตรวจพบการแก้ไขข้อมูลเพศใน LocalStorage โดยไม่ผ่านระบบ ระบบรับรู้การกระทำทั้งหมดและคืนค่าเดิมให้เรียบร้อย`);
         const restoredGender = saved === 'female' ? 'male' : 'female';
         setUserGender(restoredGender);
         await saveVerifiedGender(restoredGender);
@@ -56,6 +65,7 @@ export function App() {
 
   const handleSelectGender = async (gender: 'male' | 'female') => {
     setUserGender(gender);
+    localStorage.setItem('voice_user_ever_selected', 'true');
     await saveVerifiedGender(gender);
     setShowGenderModal(false);
   };
@@ -238,6 +248,22 @@ export function App() {
             />
           ) : (
             <div className="max-w-4xl mx-auto px-6 py-12">
+              {/* Tamper Warning Banner (สไตล์ Notion Alert) */}
+              {tamperWarning && (
+                <div className="mb-6 p-4 rounded-lg bg-[#fdf5f5] border border-[#f7d7d7] text-xs text-[#eb5757] flex items-start justify-between gap-3 shadow-xs">
+                  <div className="leading-relaxed">
+                    <span className="font-semibold block mb-0.5 text-sm">⚠️ ตรวจพบการพยายามแก้ไขข้อมูล</span>
+                    {tamperWarning}
+                  </div>
+                  <button
+                    onClick={() => setTamperWarning(null)}
+                    className="text-[#eb5757] hover:text-[#c53b3b] font-medium text-xs cursor-pointer shrink-0"
+                  >
+                    รับทราบ
+                  </button>
+                </div>
+              )}
+
               <div className="mb-6 pb-4 border-b border-[#e9e9e7]">
                 <h1 className="text-xl font-bold tracking-tight text-[#37352f]">
                   เลือกรายการที่ต้องการอัดเสียง
