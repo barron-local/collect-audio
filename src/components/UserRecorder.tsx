@@ -71,6 +71,8 @@ export const UserRecorder: React.FC<Props> = ({
     };
   }, [recordedAudioUrl]);
 
+  const MAX_RECORDING_SECONDS = 60; // จำกัดเวลาอัดสูงสุด 60 วินาที ป้องกันไฟล์ขยะและ spam
+
   const stopAudioStreams = () => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
@@ -171,6 +173,11 @@ export const UserRecorder: React.FC<Props> = ({
       timerIntervalRef.current = setInterval(() => {
         const elapsed = Math.floor((Date.now() - startTime) / 1000);
         setRecordingSeconds(elapsed);
+
+        // ตัดการบันทึกอัตโนมัติเมื่อถึงขีดจำกัดสูงสุด 60 วินาที
+        if (elapsed >= MAX_RECORDING_SECONDS) {
+          stopRecording();
+        }
       }, 500);
 
     } catch (err: any) {
@@ -211,11 +218,12 @@ export const UserRecorder: React.FC<Props> = ({
     setErrorMessage(null);
 
     try {
-      localStorage.setItem('voice_speaker_name', speakerName);
+      const sanitizedName = speakerName.trim().slice(0, 50);
+      localStorage.setItem('voice_speaker_name', sanitizedName);
       await uploadRecording({
         mp3Blob: recordedMp3Blob,
         topicId: campaign.id,
-        speakerName,
+        speakerName: sanitizedName,
         gender,
         durationSeconds: Math.max(1, recordingSeconds)
       });
@@ -302,6 +310,7 @@ export const UserRecorder: React.FC<Props> = ({
             disabled={!isGenderAllowed}
             placeholder="ระบุชื่อของคุณ (ไม่บังคับ)"
             value={speakerName}
+            maxLength={50}
             onChange={(e) => setSpeakerName(e.target.value)}
             className="w-full px-3 py-1.5 text-sm border border-[#e9e9e7] rounded outline-none focus:border-[#2383e2] text-[#37352f] disabled:bg-[#f7f6f3] disabled:text-[#787774]"
           />

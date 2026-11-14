@@ -290,8 +290,15 @@ export async function uploadRecording(params: {
   durationSeconds: number;
 }): Promise<AudioRecord> {
   const { mp3Blob, topicId, speakerName, gender, durationSeconds } = params;
+  
+  // ตรวจสอบขนาดไฟล์ ป้องกัน Spam / Denial of Wallet (สูงสุด 10MB)
+  const MAX_FILE_SIZE = 10 * 1024 * 1024;
+  if (mp3Blob.size > MAX_FILE_SIZE) {
+    throw new Error('ขนาดไฟล์เกินขีดจำกัดสูงสุด (10MB)');
+  }
+
   const recId = 'rec-' + Date.now();
-  const cleanSpeaker = speakerName.trim() || 'ไม่ระบุชื่อ';
+  const cleanSpeaker = speakerName.trim().slice(0, 50) || 'ไม่ระบุชื่อ';
 
   if (isSupabaseConfigured && supabase) {
     const filePath = `${topicId}/${gender}/${recId}.mp3`;
