@@ -26,6 +26,27 @@ export function App() {
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Gender change rate limit per day (สูงสุด 3 ครั้งต่อวัน)
+  const MAX_GENDER_CHANGES_PER_DAY = 3;
+
+  const getGenderChangeQuota = () => {
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const raw = localStorage.getItem('voice_gender_changes_meta');
+    if (!raw) return { count: 0, date: today };
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed.date !== today) {
+        return { count: 0, date: today };
+      }
+      return parsed;
+    } catch {
+      return { count: 0, date: today };
+    }
+  };
+
+  const [genderChangeQuota, setGenderChangeQuota] = useState(getGenderChangeQuota);
+  const remainingGenderChanges = Math.max(0, MAX_GENDER_CHANGES_PER_DAY - genderChangeQuota.count);
+
   useEffect(() => {
     const saved = localStorage.getItem('voice_user_gender');
     if (!saved) {
@@ -34,6 +55,19 @@ export function App() {
   }, []);
 
   const handleSelectGender = (gender: 'male' | 'female') => {
+    const today = new Date().toISOString().slice(0, 10);
+    // ถ้าเคยเลือกเพศแล้ว และกำลังเปลี่ยนเป็นเพศใหม่ ให้บันทึกโควตา
+    if (userGender && userGender !== gender) {
+      const currentQuota = getGenderChangeQuota();
+      if (currentQuota.count >= MAX_GENDER_CHANGES_PER_DAY) {
+        alert('คุณได้เปลี่ยนเพศครบ 3 ครั้งของวันนี้แล้ว');
+        return;
+      }
+      const newQuota = { count: currentQuota.count + 1, date: today };
+      localStorage.setItem('voice_gender_changes_meta', JSON.stringify(newQuota));
+      setGenderChangeQuota(newQuota);
+    }
+
     setUserGender(gender);
     localStorage.setItem('voice_user_gender', gender);
     setShowGenderModal(false);
@@ -158,6 +192,7 @@ export function App() {
           currentGender={userGender}
           onSelect={handleSelectGender}
           onClose={userGender ? () => setShowGenderModal(false) : undefined}
+          remainingChanges={remainingGenderChanges}
         />
       )}
 

@@ -5,13 +5,15 @@ interface Props {
   currentGender?: 'male' | 'female' | '';
   onSelect: (gender: 'male' | 'female') => void;
   onClose?: () => void;
+  remainingChanges?: number;
 }
 
-export const GenderModal: React.FC<Props> = ({ currentGender, onSelect, onClose }) => {
+export const GenderModal: React.FC<Props> = ({ currentGender, onSelect, onClose, remainingChanges = 3 }) => {
   const [selected, setSelected] = useState<'male' | 'female' | ''>(currentGender || '');
+  const isLimitReached = Boolean(currentGender && remainingChanges <= 0);
 
   const handleConfirm = () => {
-    if (selected) {
+    if (selected && !isLimitReached) {
       onSelect(selected);
     }
   };
@@ -19,9 +21,22 @@ export const GenderModal: React.FC<Props> = ({ currentGender, onSelect, onClose 
   return (
     <div className="fixed inset-0 z-50 bg-[#37352f]/30 backdrop-blur-[2px] flex items-center justify-center p-4">
       <div className="bg-white border border-[#e9e9e7] rounded-lg max-w-sm w-full p-6 shadow-md">
-        <h2 className="text-xl font-bold text-[#37352f] mb-6 text-center">
+        <h2 className="text-xl font-bold text-[#37352f] mb-1.5 text-center">
           เลือกเพศผู้พูด
         </h2>
+
+        {/* Change Quota Limit Notice */}
+        {currentGender && (
+          <p className="text-xs text-center text-[#787774] mb-5">
+            {isLimitReached ? (
+              <span className="text-[#eb5757] font-medium">
+                คุณเปลี่ยนเพศครบ 3 ครั้งของวันนี้แล้ว (เปลี่ยนใหม่ได้ในวันพรุ่งนี้)
+              </span>
+            ) : (
+              <span>เปลี่ยนได้อีก <strong className="text-[#37352f] font-mono">{remainingChanges}</strong> ครั้งในวันนี้</span>
+            )}
+          </p>
+        )}
 
         <div className="space-y-2.5 mb-6">
           {/* Male Option */}
@@ -97,9 +112,9 @@ export const GenderModal: React.FC<Props> = ({ currentGender, onSelect, onClose 
 
           <button
             type="button"
-            disabled={!selected}
+            disabled={!selected || isLimitReached || (currentGender === selected)}
             onClick={handleConfirm}
-            className="px-4 py-1.5 text-xs bg-[#37352f] hover:bg-[#201f1d] text-white rounded font-medium transition cursor-pointer disabled:opacity-40"
+            className="px-4 py-1.5 text-xs bg-[#37352f] hover:bg-[#201f1d] text-white rounded font-medium transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
             ยืนยัน
           </button>
