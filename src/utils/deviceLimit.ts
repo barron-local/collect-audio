@@ -102,8 +102,7 @@ export async function saveAssignedGender(gender: 'male' | 'female', isChange: bo
           device_id: deviceId,
           change_date: cycleDate,
           change_count: newCount,
-          assigned_gender: gender,
-          last_updated: new Date().toISOString()
+          assigned_gender: gender
         }, { onConflict: 'device_id,change_date' });
 
       if (error) {
