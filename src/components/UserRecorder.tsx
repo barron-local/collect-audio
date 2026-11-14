@@ -366,13 +366,8 @@ export const UserRecorder: React.FC<Props> = ({
                         <span className="font-medium text-[#37352f] text-xs truncate">
                           {rec.speakerName || 'ไม่ระบุชื่อ'}
                         </span>
-                        <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border shrink-0 ${
-                          rec.gender === 'female' 
-                            ? 'bg-rose-50/60 border-rose-200/80 text-rose-700' 
-                            : 'bg-blue-50/60 border-blue-200/80 text-blue-700'
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${rec.gender === 'female' ? 'bg-rose-500' : 'bg-blue-500'}`} />
-                          {rec.gender === 'female' ? 'เสียงหญิง' : 'เสียงชาย'}
+                        <span className="text-[11px] text-[#787774] font-normal">
+                          ({rec.gender === 'female' ? 'หญิง' : 'ชาย'})
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-[11px] text-[#9b9a97] mt-0.5">
