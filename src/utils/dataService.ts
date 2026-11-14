@@ -112,24 +112,13 @@ export async function getTopicDetails(topicId: string): Promise<Topic> {
     }
 
     // Query audio_records for this topic
-    let recs: any[] = [];
-    const { data: recsByTopic, error: recTopicErr } = await supabase
+    const { data: recsByTopic } = await supabase
       .from('audio_records')
       .select('*')
       .eq('topic_id', topicId)
       .order('recorded_at', { ascending: false });
 
-    if (!recTopicErr && recsByTopic) {
-      recs = recsByTopic;
-    } else {
-      // Fallback query by campaign_id if topic_id column does not exist yet
-      const { data: recsByCamp } = await supabase
-        .from('audio_records')
-        .select('*')
-        .eq('campaign_id', topicId)
-        .order('recorded_at', { ascending: false });
-      if (recsByCamp) recs = recsByCamp;
-    }
+    const recs = recsByTopic || [];
 
     return {
       id: topic.id,
@@ -247,21 +236,12 @@ export async function updateTopic(
 export async function deleteTopic(topicId: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     // Delete associated files from storage
-    let recs: any[] = [];
     const { data: recsTopic } = await supabase
       .from('audio_records')
       .select('filename')
       .eq('topic_id', topicId);
 
-    if (recsTopic && recsTopic.length > 0) {
-      recs = recsTopic;
-    } else {
-      const { data: recsCamp } = await supabase
-        .from('audio_records')
-        .select('filename')
-        .eq('campaign_id', topicId);
-      if (recsCamp) recs = recsCamp;
-    }
+    const recs = recsTopic || [];
 
     if (recs && recs.length > 0) {
       const filePaths = recs.map(r => r.filename).filter(Boolean);
