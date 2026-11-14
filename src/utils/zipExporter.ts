@@ -13,8 +13,27 @@ export async function exportCampaignZip(
     return r.gender === genderFilter;
   });
 
+  // Helper to generate encoded signature token
+  const generateBarronToken = (id: string, timestamp: string) => {
+    const raw = `barron::${id}::${timestamp}::${Math.random().toString(36).substring(2, 10)}`;
+    try {
+      const b64 = btoa(unescape(encodeURIComponent(raw)));
+      const hex = Array.from(raw).map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join('');
+      return `barron-enc-v1$${b64}$${hex.slice(0, 16)}`;
+    } catch {
+      return `barron-enc-v1$${Math.random().toString(36).substring(2)}${Date.now().toString(16)}`;
+    }
+  };
+
   // Metadata JSON
+  const nowIso = new Date().toISOString();
   const metadata = {
+    signature: {
+      generator: 'barron-audio-engine/v1.0',
+      'barron-encode': generateBarronToken(campaign.id, nowIso),
+      checksum: Array.from({ length: 4 }, () => Math.random().toString(36).substring(2, 10)).join('-'),
+      exportedAt: nowIso
+    },
     campaign,
     filterGender: genderFilter,
     totalRecords: filtered.length,
@@ -24,7 +43,8 @@ export async function exportCampaignZip(
       gender: r.gender,
       durationSeconds: r.durationSeconds,
       filename: `${r.gender}/${r.speakerName}_${r.id}.mp3`,
-      recordedAt: r.recordedAt
+      recordedAt: r.recordedAt,
+      'barron-encode': generateBarronToken(r.id, r.recordedAt)
     }))
   };
 
