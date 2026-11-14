@@ -131,12 +131,16 @@ export function App() {
 
         <div className="flex items-center gap-3">
           {!isAdminRoute && (
-            <div className="text-xs text-[#787774] flex items-center gap-1.5 py-1 px-2 rounded border border-[#e9e9e7] bg-[#fbfbfa]">
+            <button
+              onClick={() => setShowGenderModal(true)}
+              className="text-xs text-[#787774] hover:text-[#37352f] flex items-center gap-1.5 py-1 px-2 rounded border border-[#e9e9e7] hover:bg-[#f7f6f3] transition cursor-pointer"
+              title="คลิกเพื่อเปลี่ยนเพศ"
+            >
               <span>เพศ:</span>
               <span className="font-medium text-[#37352f]">
                 {userGender === 'male' ? 'ชาย' : userGender === 'female' ? 'หญิง' : 'ยังไม่เลือก'}
               </span>
-            </div>
+            </button>
           )}
 
           {isAdminRoute && isAdminAuthenticated && (
@@ -150,11 +154,12 @@ export function App() {
         </div>
       </header>
 
-      {/* Gender Selection Dialog (แสดงเฉพาะตอนเข้าใช้งานครั้งแรก) */}
-      {showGenderModal && !userGender && (
+      {/* Gender Selection Dialog */}
+      {showGenderModal && (
         <GenderModal
           currentGender={userGender}
           onSelect={handleSelectGender}
+          onClose={userGender ? () => setShowGenderModal(false) : undefined}
         />
       )}
 
