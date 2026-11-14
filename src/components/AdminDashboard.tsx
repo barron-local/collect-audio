@@ -503,11 +503,18 @@ export const AdminDashboard: React.FC<Props> = ({
                 filteredRecords.map((rec) => (
                   <div key={rec.id} className="px-6 py-3 flex items-center justify-between text-xs hover:bg-[#fbfbfa]">
                     <div className="flex items-center gap-3">
-                      <span className="w-12 text-[#787774]">
-                        {rec.gender === 'female' ? 'หญิง' : 'ชาย'}
-                      </span>
                       <div>
-                        <div className="font-medium text-[#37352f]">{rec.speakerName}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-[#37352f]">{rec.speakerName || 'ไม่ระบุชื่อ'}</span>
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border shrink-0 ${
+                            rec.gender === 'female' 
+                              ? 'bg-rose-50/60 border-rose-200/80 text-rose-700' 
+                              : 'bg-blue-50/60 border-blue-200/80 text-blue-700'
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${rec.gender === 'female' ? 'bg-rose-500' : 'bg-blue-500'}`} />
+                            {rec.gender === 'female' ? 'เสียงหญิง' : 'เสียงชาย'}
+                          </span>
+                        </div>
                         <div className="flex items-center gap-2 text-[11px] text-[#9b9a97] mt-0.5">
                           <span className="font-mono text-[#787774]">{rec.durationSeconds} วินาที</span>
                           <span className="text-[#d3d2cf]">|</span>

@@ -362,10 +362,17 @@ export const UserRecorder: React.FC<Props> = ({
                   <div className="flex items-center gap-3 min-w-0">
                     <FileAudio className="w-4 h-4 text-[#787774] shrink-0" />
                     <div className="min-w-0">
-                      <div className="font-medium text-[#37352f] flex items-center gap-2">
-                        <span className="truncate">{rec.speakerName}</span>
-                        <span className="text-[10px] text-[#787774] px-1.5 py-0.2 bg-[#f7f6f3] border border-[#e9e9e7] rounded shrink-0">
-                          {rec.gender === 'female' ? 'หญิง' : 'ชาย'}
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-[#37352f] text-xs truncate">
+                          {rec.speakerName || 'ไม่ระบุชื่อ'}
+                        </span>
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border shrink-0 ${
+                          rec.gender === 'female' 
+                            ? 'bg-rose-50/60 border-rose-200/80 text-rose-700' 
+                            : 'bg-blue-50/60 border-blue-200/80 text-blue-700'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${rec.gender === 'female' ? 'bg-rose-500' : 'bg-blue-500'}`} />
+                          {rec.gender === 'female' ? 'เสียงหญิง' : 'เสียงชาย'}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-[11px] text-[#9b9a97] mt-0.5">
