@@ -176,19 +176,9 @@ export function App() {
                 </span>
               </div>
 
-              {/* Status Pill Badge */}
-              <div className="inline-flex items-center gap-1.5 text-[11px] font-mono font-medium text-[#eb5757] px-2.5 py-0.5 rounded-full bg-[#fdf5f5] border border-[#f7d7d7] mb-3">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#eb5757]" />
-                Page Not Found
-              </div>
-
-              <h1 className="text-lg font-semibold text-[#37352f] tracking-tight mb-2">
+              <h1 className="text-lg font-semibold text-[#37352f] tracking-tight mb-6">
                 ไม่พบหน้าที่คุณต้องการ
               </h1>
-              
-              <p className="text-xs text-[#787774] leading-relaxed mb-6 max-w-xs mx-auto">
-                เส้นทาง <code className="px-1.5 py-0.5 rounded bg-[#f7f6f3] border border-[#e9e9e7] text-[#37352f] font-mono text-[11px] font-medium">{currentPath}</code> ไม่มีอยู่ในระบบหรืออาจถูกย้ายไปแล้ว
-              </p>
 
               <div className="pt-5 border-t border-[#e9e9e7] flex justify-center">
                 <button
