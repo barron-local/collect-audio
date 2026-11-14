@@ -1,12 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft } from 'lucide-react';
 
 interface Props {
   onSuccess: () => void;
-  onCancel: () => void;
+  onCancel?: () => void;
 }
 
-export const AdminPinAuth: React.FC<Props> = ({ onSuccess, onCancel }) => {
+export const AdminPinAuth: React.FC<Props> = ({ onSuccess }) => {
   const [pin, setPin] = useState(['', '', '', '']);
   const [error, setError] = useState(false);
 
@@ -67,15 +66,9 @@ export const AdminPinAuth: React.FC<Props> = ({ onSuccess, onCancel }) => {
   return (
     <div className="min-h-[75vh] flex items-center justify-center px-4">
       <div className="w-full max-w-sm border border-[#e9e9e7] rounded-lg p-8 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-        <button
-          onClick={onCancel}
-          className="inline-flex items-center gap-1.5 text-xs text-[#787774] hover:text-[#37352f] transition mb-6 cursor-pointer"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" /> Back
-        </button>
-
-        <h1 className="text-xl font-semibold text-[#37352f] tracking-tight">Admin Access</h1>
-        <p className="text-xs text-[#787774] mt-1 mb-6">Enter 4-digit security PIN to continue</p>
+        <h1 className="text-2xl font-semibold text-[#37352f] tracking-tight text-center mb-6">
+          Admin Access
+        </h1>
 
         <div className="flex justify-center gap-2.5 mb-5">
           {[0, 1, 2, 3].map((idx) => {
