@@ -11,25 +11,24 @@ try {
   localStorage.removeItem('voice_collector_records');
 } catch {}
 
-// 1. Generate or retrieve permanent device ID (Canvas + Screen + Audio context hash fallback)
+// 1. Generate or retrieve permanent device ID (Canvas + Screen fingerprint)
 export function getOrCreateDeviceId(): string {
   let deviceId = localStorage.getItem(DEVICE_ID_KEY);
   if (!deviceId) {
     try {
       const screenInfo = `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}`;
       const navInfo = `${navigator.userAgent}::${navigator.language}`;
-      const randomSeed = Math.random().toString(36).substring(2, 15);
-      const raw = `${screenInfo}::${navInfo}::${randomSeed}::${Date.now()}`;
+      const raw = `${screenInfo}::${navInfo}`;
       
-      // Simple hash
+      // Deterministic hash based on hardware/browser specs
       let hash = 0;
       for (let i = 0; i < raw.length; i++) {
         hash = (hash << 5) - hash + raw.charCodeAt(i);
         hash |= 0;
       }
-      deviceId = 'dev_' + Math.abs(hash).toString(36) + '_' + Date.now().toString(36);
+      deviceId = 'dev_' + Math.abs(hash).toString(36);
     } catch {
-      deviceId = 'dev_' + Math.random().toString(36).substring(2, 12);
+      deviceId = 'dev_client';
     }
     localStorage.setItem(DEVICE_ID_KEY, deviceId);
   }

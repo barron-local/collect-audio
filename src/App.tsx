@@ -45,9 +45,23 @@ export function App() {
     }
   };
 
+  // Listen to window focus or storage changes to immediately revert any manual tampering
   useEffect(() => {
-    syncGenderLimit();
-  }, []);
+    const handleStorageTamper = (e: StorageEvent) => {
+      if (e.key === 'voice_user_gender' && userGender && e.newValue !== userGender) {
+        // บังคับเขียนทับกลับคืนทันที
+        localStorage.setItem('voice_user_gender', userGender);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageTamper);
+    window.addEventListener('focus', syncGenderLimit);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageTamper);
+      window.removeEventListener('focus', syncGenderLimit);
+    };
+  }, [userGender]);
 
   const handleSelectGender = async (gender: 'male' | 'female') => {
     const isChange = Boolean(userGender && userGender !== gender);
