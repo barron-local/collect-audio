@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import type { Campaign } from './types';
 import { AdminDashboard } from './components/AdminDashboard';
 import { AdminPinAuth } from './components/AdminPinAuth';
@@ -6,7 +6,6 @@ import { UserRecorder } from './components/UserRecorder';
 import { GenderModal } from './components/GenderModal';
 import { getCampaigns } from './utils/dataService';
 import { Folder, Search, X, ArrowLeft } from 'lucide-react';
-import { syncDeviceGenderProfile, saveAssignedGender, MAX_GENDER_CHANGES_PER_DAY } from './utils/deviceLimit';
 
 export function App() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
@@ -14,8 +13,10 @@ export function App() {
     sessionStorage.getItem('admin_auth_token') === 'true'
   );
 
-  // User gender is strictly derived from server, not blindly trusted from localStorage
-  const [userGender, setUserGender] = useState<'male' | 'female' | ''>('');
+  // กลับไปใช้ค่า voice_user_gender จาก localStorage ตามเดิม
+  const [userGender, setUserGender] = useState<'male' | 'female' | ''>(
+    () => (localStorage.getItem('voice_user_gender') as 'male' | 'female') || ''
+  );
   const [showGenderModal, setShowGenderModal] = useState(false);
 
   // Filter & Search states
@@ -26,60 +27,17 @@ export function App() {
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Gender change count from server/device
-  const [genderChangeCount, setGenderChangeCount] = useState(0);
-  const remainingGenderChanges = Math.max(0, MAX_GENDER_CHANGES_PER_DAY - genderChangeCount);
-  const userGenderRef = useRef(userGender);
-  userGenderRef.current = userGender;
-
-  // Sync profile on mount (Strict server source of truth)
-  const syncGenderLimit = async () => {
-    const profile = await syncDeviceGenderProfile();
-    setGenderChangeCount(profile.changeCount);
-    if (profile.assignedGender) {
-      setUserGender(profile.assignedGender);
-      // เขียนค่ากลับลง localStorage ให้ตรงกับ server ป้องกันการปลอมแปลง
-      localStorage.setItem('voice_user_gender', profile.assignedGender);
-    } else {
-      setUserGender('');
-      localStorage.removeItem('voice_user_gender');
+  // แสดง modal เฉพาะตอนเข้ามาครั้งแรกแล้วยังไม่มีเพศ
+  useEffect(() => {
+    const saved = localStorage.getItem('voice_user_gender');
+    if (!saved) {
       setShowGenderModal(true);
     }
-  };
-
-  // Listen to window focus or storage changes to immediately revert any manual tampering
-  useEffect(() => {
-    syncGenderLimit();
-
-    const handleStorageTamper = (e: StorageEvent) => {
-      if (e.key === 'voice_user_gender' && userGenderRef.current && e.newValue !== userGenderRef.current) {
-        // บังคับเขียนทับกลับคืนทันที
-        localStorage.setItem('voice_user_gender', userGenderRef.current);
-      }
-    };
-
-    window.addEventListener('storage', handleStorageTamper);
-    window.addEventListener('focus', syncGenderLimit);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageTamper);
-      window.removeEventListener('focus', syncGenderLimit);
-    };
   }, []);
 
-  const handleSelectGender = async (gender: 'male' | 'female') => {
-    const isChange = Boolean(userGender && userGender !== gender);
-    if (isChange) {
-      const profile = await syncDeviceGenderProfile();
-      if (profile.changeCount >= MAX_GENDER_CHANGES_PER_DAY) {
-        setGenderChangeCount(profile.changeCount);
-        return;
-      }
-    }
-
-    const updatedCount = await saveAssignedGender(gender, isChange);
-    setGenderChangeCount(updatedCount);
+  const handleSelectGender = (gender: 'male' | 'female') => {
     setUserGender(gender);
+    localStorage.setItem('voice_user_gender', gender);
     setShowGenderModal(false);
   };
 
@@ -173,16 +131,12 @@ export function App() {
 
         <div className="flex items-center gap-3">
           {!isAdminRoute && (
-            <button
-              onClick={() => setShowGenderModal(true)}
-              className="text-xs text-[#787774] hover:text-[#37352f] flex items-center gap-1.5 py-1 px-2 rounded border border-[#e9e9e7] hover:bg-[#f7f6f3] transition cursor-pointer"
-              title="คลิกเพื่อเปลี่ยนเพศ"
-            >
+            <div className="text-xs text-[#787774] flex items-center gap-1.5 py-1 px-2 rounded border border-[#e9e9e7] bg-[#fbfbfa]">
               <span>เพศ:</span>
               <span className="font-medium text-[#37352f]">
                 {userGender === 'male' ? 'ชาย' : userGender === 'female' ? 'หญิง' : 'ยังไม่เลือก'}
               </span>
-            </button>
+            </div>
           )}
 
           {isAdminRoute && isAdminAuthenticated && (
@@ -196,13 +150,11 @@ export function App() {
         </div>
       </header>
 
-      {/* Gender Selection Dialog */}
-      {showGenderModal && (
+      {/* Gender Selection Dialog (แสดงเฉพาะตอนเข้าใช้งานครั้งแรก) */}
+      {showGenderModal && !userGender && (
         <GenderModal
           currentGender={userGender}
           onSelect={handleSelectGender}
-          onClose={userGender ? () => setShowGenderModal(false) : undefined}
-          remainingChanges={remainingGenderChanges}
         />
       )}
 
