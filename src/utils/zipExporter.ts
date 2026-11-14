@@ -25,6 +25,20 @@ export async function exportCampaignZip(
     }
   };
 
+  // Helper to format safe ascii filename for universal compatibility (ZIP + Windows/Linux filesystem)
+  const getSafeSpeakerSlug = (speakerName: string) => {
+    // เก็บเฉพาะภาษาอังกฤษและตัวเลข ถ้าเป็นภาษาไทยหรือว่าง ให้ใช้ user หรือ speaker
+    const latinOnly = speakerName.replace(/[^a-zA-Z0-9_-]/g, '').trim();
+    return latinOnly || 'speaker';
+  };
+
+  // Helper to compute real cryptographic SHA-256 hash using native Web Crypto API
+  const computeSha256 = async (data: BufferSource): Promise<string> => {
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  };
+
   // Metadata JSON
   const nowIso = new Date().toISOString();
   const metadata = {
@@ -37,22 +51,18 @@ export async function exportCampaignZip(
     campaign,
     filterGender: genderFilter,
     totalRecords: filtered.length,
-    records: filtered.map(r => ({
-      id: r.id,
-      speakerName: r.speakerName,
-      gender: r.gender,
-      durationSeconds: r.durationSeconds,
-      filename: `${r.gender}/${r.speakerName}_${r.id}.mp3`,
-      recordedAt: r.recordedAt,
-      'barron-encode': generateBarronToken(r.id, r.recordedAt)
-    }))
-  };
-
-  // Helper to compute real cryptographic SHA-256 hash using native Web Crypto API
-  const computeSha256 = async (data: BufferSource): Promise<string> => {
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    records: filtered.map(r => {
+      const speakerSlug = getSafeSpeakerSlug(r.speakerName || '');
+      return {
+        id: r.id,
+        speakerName: r.speakerName,
+        gender: r.gender,
+        durationSeconds: r.durationSeconds,
+        filename: `${r.gender}/${r.gender}_${speakerSlug}_${r.id}.mp3`,
+        recordedAt: r.recordedAt,
+        'barron-encode': generateBarronToken(r.id, r.recordedAt)
+      };
+    })
   };
 
   const checksumLines: string[] = [];
@@ -66,13 +76,14 @@ export async function exportCampaignZip(
       const sha256 = await computeSha256(arrayBuffer);
 
       const folderName = rec.gender === 'female' ? 'female' : 'male';
-      const cleanSpeaker = (rec.speakerName || 'user').replace(/[^a-zA-Z0-9\u0E00-\u0E7F_-]/g, '_');
-      const relativePath = `${folderName}/${cleanSpeaker}_${rec.id}.mp3`;
+      const speakerSlug = getSafeSpeakerSlug(rec.speakerName || '');
+      const audioFileName = `${rec.gender}_${speakerSlug}_${rec.id}.mp3`;
+      const relativePath = `${folderName}/${audioFileName}`;
 
-      // Format standard sha256 checksum entry: "<hash>  <filepath>"
-      checksumLines.push(`${sha256}  ${relativePath}`);
+      // Format standard sha256 checksum entry: "<hash>  <filepath>" (lowercase hash)
+      checksumLines.push(`${sha256.toLowerCase()}  ${relativePath}`);
 
-      zip.folder(folderName)?.file(`${cleanSpeaker}_${rec.id}.mp3`, arrayBuffer);
+      zip.folder(folderName)?.file(audioFileName, arrayBuffer);
     } catch (err) {
       console.error('Failed to add audio to zip:', rec.id, err);
     }
