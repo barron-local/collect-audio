@@ -51,7 +51,7 @@ export function App() {
 
       // กรณีที่ 1: เคยเลือกเพศแล้ว แต่ไปแอบลบค่าใน localStorage
       if (!saved && hasEverSelected) {
-        setTamperWarning('ตรวจพบความไม่ถูกต้องของข้อมูล ระบบได้คืนค่าเดิมของคุณเรียบร้อย');
+        setTamperWarning('แจ้งเตือนความปลอดภัย: ตรวจพบความพยายามแก้ไขหรือดัดแปลงข้อมูลภายในเครื่อง ระบบได้ปฏิเสธความพยายามดังกล่าวและกู้คืนค่าความถูกต้องเรียบร้อยแล้ว');
         setUserGender('male');
         await saveVerifiedGender('male');
         return;
@@ -65,7 +65,7 @@ export function App() {
       // กรณีที่ 2: มีค่า แต่ Signature ไม่ตรง (แอบพิมพ์แก้ค่าใน DevTools)
       const isValid = await verifyGenderIntegrity(saved);
       if (!isValid) {
-        setTamperWarning('ตรวจพบความไม่ถูกต้องของข้อมูล ระบบได้คืนค่าเดิมของคุณเรียบร้อย');
+        setTamperWarning('แจ้งเตือนความปลอดภัย: ตรวจพบความพยายามแก้ไขหรือดัดแปลงข้อมูลภายในเครื่อง ระบบได้ปฏิเสธความพยายามดังกล่าวและกู้คืนค่าความถูกต้องเรียบร้อยแล้ว');
         const restoredGender = saved === 'female' ? 'male' : 'female';
         setUserGender(restoredGender);
         await saveVerifiedGender(restoredGender);
