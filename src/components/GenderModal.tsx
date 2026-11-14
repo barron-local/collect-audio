@@ -30,7 +30,7 @@ export const GenderModal: React.FC<Props> = ({ currentGender, onSelect, onClose,
           <p className="text-xs text-center text-[#787774] mb-5">
             {isLimitReached ? (
               <span className="text-[#eb5757] font-medium">
-                คุณเปลี่ยนเพศครบ 3 ครั้งของวันนี้แล้ว (เปลี่ยนใหม่ได้ในวันพรุ่งนี้)
+                คุณเปลี่ยนเพศครบ 3 ครั้งของวันนี้แล้ว
               </span>
             ) : (
               <span>เปลี่ยนได้อีก <strong className="text-[#37352f] font-mono">{remainingChanges}</strong> ครั้งในวันนี้</span>
