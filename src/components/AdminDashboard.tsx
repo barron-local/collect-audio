@@ -519,7 +519,7 @@ export const AdminDashboard: React.FC<Props> = ({
                     </div>
 
                     <div className="flex items-center gap-3 shrink-0">
-                      <audio controls src={rec.fileUrl || ''} className="h-8 w-60 max-w-full" />
+                      <audio controls controlsList="nodownload noplaybackrate" src={rec.fileUrl || ''} className="h-8 w-60 max-w-full" />
 
                       {rec.fileUrl && (
                         <a

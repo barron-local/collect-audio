@@ -382,6 +382,7 @@ export const UserRecorder: React.FC<Props> = ({
                   <div className="w-full sm:w-auto shrink-0 flex items-center justify-end">
                     <audio 
                       controls 
+                      controlsList="nodownload noplaybackrate"
                       src={rec.fileUrl || ''} 
                       className="h-8 w-full sm:w-64 max-w-full" 
                     />
