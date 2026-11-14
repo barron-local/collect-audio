@@ -89,6 +89,8 @@ export function App() {
   };
 
   const isAdminRoute = currentPath === '/admin' || currentPath.startsWith('/admin/');
+  const isHomeRoute = currentPath === '/' || currentPath === '';
+  const isNotFoundRoute = !isAdminRoute && !isHomeRoute;
 
   // Filter campaigns by search & gender target
   const filteredCampaigns = campaigns.filter((camp) => {
@@ -161,7 +163,25 @@ export function App() {
 
       {/* Main Content Area */}
       <main className="flex-1">
-        {isAdminRoute ? (
+        {isNotFoundRoute ? (
+          <div className="min-h-[70vh] flex flex-col items-center justify-center px-4 text-center">
+            <div className="w-12 h-12 rounded-full bg-[#f7f6f3] border border-[#e9e9e7] flex items-center justify-center text-[#787774] text-sm font-mono mb-4">
+              404
+            </div>
+            <h1 className="text-xl font-bold text-[#37352f] tracking-tight mb-1.5">
+              ไม่พบหน้าที่คุณต้องการ
+            </h1>
+            <p className="text-xs text-[#787774] max-w-sm mb-6 leading-relaxed">
+              หน้าที่คุณกำลังพยายามเข้าถึงไม่มีอยู่จริงหรือถูกย้ายที่แล้ว
+            </p>
+            <button
+              onClick={() => navigateTo('/')}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#37352f] hover:bg-[#201f1d] text-white text-xs font-medium rounded transition cursor-pointer"
+            >
+              กลับสู่หน้าหลัก
+            </button>
+          </div>
+        ) : isAdminRoute ? (
           !isAdminAuthenticated ? (
             <AdminPinAuth
               onSuccess={() => setIsAdminAuthenticated(true)}
