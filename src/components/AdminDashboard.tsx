@@ -8,7 +8,8 @@ import {
   Download, 
   RefreshCw,
   Folder,
-  X
+  X,
+  AlertTriangle
 } from 'lucide-react';
 
 interface Props {
@@ -23,6 +24,10 @@ export const AdminDashboard: React.FC<Props> = ({
   // Modal State
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
+
+  // Delete Confirmation Modal State
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string; type: 'topic' | 'audio'; filename?: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Form Fields
   const [title, setTitle] = useState('');
@@ -90,19 +95,48 @@ export const AdminDashboard: React.FC<Props> = ({
     }
   };
 
-  const handleDeleteCampaign = async (id: string, e: React.MouseEvent) => {
+  const triggerDeleteTopic = (camp: Campaign, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!window.confirm('ยืนยันลบหัวข้อนี้และไฟล์เสียงทั้งหมดข้างใน?')) return;
+    setDeleteTarget({
+      id: camp.id,
+      title: camp.title,
+      type: 'topic'
+    });
+  };
+
+  const triggerDeleteAudio = (recId: string, speakerName: string, filename?: string) => {
+    setDeleteTarget({
+      id: recId,
+      title: `ไฟล์เสียงของ ${speakerName}`,
+      type: 'audio',
+      filename
+    });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
 
     try {
-      await deleteCampaign(id);
-      onRefresh();
-      if (selectedCampaign?.id === id) {
-        setSelectedCampaign(null);
-        setCampaignDetails(null);
+      if (deleteTarget.type === 'topic') {
+        await deleteCampaign(deleteTarget.id);
+        onRefresh();
+        if (selectedCampaign?.id === deleteTarget.id) {
+          setSelectedCampaign(null);
+          setCampaignDetails(null);
+        }
+      } else if (deleteTarget.type === 'audio') {
+        await deleteRecording(deleteTarget.id, deleteTarget.filename);
+        if (selectedCampaign) {
+          handleOpenFolder(selectedCampaign);
+        }
+        onRefresh();
       }
+      setDeleteTarget(null);
     } catch (err: any) {
-      alert('เกิดข้อผิดพลาด: ' + err.message);
+      alert('เกิดข้อผิดพลาดในการลบ: ' + err.message);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -116,19 +150,6 @@ export const AdminDashboard: React.FC<Props> = ({
       alert('โหลดข้อมูลไม่สำเร็จ: ' + err.message);
     } finally {
       setLoadingDetails(false);
-    }
-  };
-
-  const handleDeleteAudio = async (recId: string, filename?: string) => {
-    if (!window.confirm('ยืนยันลบไฟล์เสียงนี้?')) return;
-    try {
-      await deleteRecording(recId, filename);
-      if (selectedCampaign) {
-        handleOpenFolder(selectedCampaign);
-      }
-      onRefresh();
-    } catch (err: any) {
-      alert('ไม่สามารถลบไฟล์ได้: ' + err.message);
     }
   };
 
@@ -175,6 +196,50 @@ export const AdminDashboard: React.FC<Props> = ({
           </button>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal (Notion Style) */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 bg-[#37352f]/30 backdrop-blur-[2px] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white border border-[#e9e9e7] rounded-lg max-w-sm w-full p-6 shadow-lg">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="p-2 rounded bg-[#eb5757]/10 text-[#eb5757] shrink-0 mt-0.5">
+                <AlertTriangle className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-[#37352f]">
+                  {deleteTarget.type === 'topic' ? 'ยืนยันลบหัวข้อนี้?' : 'ยืนยันลบไฟล์เสียง?'}
+                </h3>
+                <p className="text-xs text-[#787774] mt-1 leading-relaxed">
+                  {deleteTarget.type === 'topic' ? (
+                    <>คุณต้องการลบ <strong>"{deleteTarget.title}"</strong> และไฟล์เสียงทั้งหมดข้างในใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้</>
+                  ) : (
+                    <>คุณต้องการลบ <strong>"{deleteTarget.title}"</strong> ออกจากระบบใช่หรือไม่?</>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-[#e9e9e7]">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                disabled={isDeleting}
+                className="px-3 py-1.5 text-xs text-[#787774] hover:bg-[#f7f6f3] rounded transition cursor-pointer disabled:opacity-50"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={isDeleting}
+                className="px-3.5 py-1.5 text-xs bg-[#eb5757] hover:bg-[#d84a4a] text-white rounded font-medium transition cursor-pointer disabled:opacity-50"
+              >
+                {isDeleting ? 'กำลังลบ...' : 'ยืนยันลบ'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create / Edit Campaign Modal */}
       {showFormModal && (
@@ -341,7 +406,7 @@ export const AdminDashboard: React.FC<Props> = ({
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
                     <button
-                      onClick={(e) => handleDeleteCampaign(camp.id, e)}
+                      onClick={(e) => triggerDeleteTopic(camp, e)}
                       className="text-[#787774] hover:text-[#eb5757] p-1 rounded hover:bg-[#eae9e5] transition cursor-pointer"
                       title="ลบ"
                     >
@@ -462,7 +527,7 @@ export const AdminDashboard: React.FC<Props> = ({
                       )}
 
                       <button
-                        onClick={() => handleDeleteAudio(rec.id, rec.filename)}
+                        onClick={() => triggerDeleteAudio(rec.id, rec.speakerName, rec.filename)}
                         className="text-[#787774] hover:text-[#eb5757] p-1 rounded hover:bg-[#f7f6f3] cursor-pointer"
                         title="ลบ"
                       >
