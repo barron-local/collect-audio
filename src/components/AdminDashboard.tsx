@@ -142,6 +142,14 @@ export const AdminDashboard: React.FC<Props> = ({
 
   const handleOpenFolder = async (camp: Campaign) => {
     setSelectedCampaign(camp);
+    // ตั้งค่า default filter ให้ตรงกับ targetGender ของหัวข้อ
+    if (camp.targetGender === 'male') {
+      setGenderFilter('male');
+    } else if (camp.targetGender === 'female') {
+      setGenderFilter('female');
+    } else {
+      setGenderFilter('all');
+    }
     setLoadingDetails(true);
     try {
       const data = await getCampaignDetails(camp.id);
@@ -475,30 +483,41 @@ export const AdminDashboard: React.FC<Props> = ({
             {/* Actions Bar */}
             <div className="px-6 py-2.5 bg-[#fbfbfa] border-b border-[#e9e9e7] flex items-center justify-between text-xs">
               <div className="flex gap-2">
-                <button
-                  onClick={() => setGenderFilter('all')}
-                  className={`px-2 py-1 rounded transition cursor-pointer ${
-                    genderFilter === 'all' ? 'bg-[#37352f] text-white font-medium' : 'text-[#787774] hover:bg-[#eae9e5]'
-                  }`}
-                >
-                  ทั้งหมด ({campaignDetails?.records?.length || 0})
-                </button>
-                <button
-                  onClick={() => setGenderFilter('male')}
-                  className={`px-2 py-1 rounded transition cursor-pointer ${
-                    genderFilter === 'male' ? 'bg-[#37352f] text-white font-medium' : 'text-[#787774] hover:bg-[#eae9e5]'
-                  }`}
-                >
-                  ชาย ({campaignDetails?.records?.filter(r => r.gender === 'male').length || 0})
-                </button>
-                <button
-                  onClick={() => setGenderFilter('female')}
-                  className={`px-2 py-1 rounded transition cursor-pointer ${
-                    genderFilter === 'female' ? 'bg-[#37352f] text-white font-medium' : 'text-[#787774] hover:bg-[#eae9e5]'
-                  }`}
-                >
-                  หญิง ({campaignDetails?.records?.filter(r => r.gender === 'female').length || 0})
-                </button>
+                {/* ถ้าหัวข้อไม่ใช่แบบจำกัดเฉพาะเพศ ให้มีปุ่ม ทั้งหมด */}
+                {selectedCampaign.targetGender === 'all' && (
+                  <button
+                    onClick={() => setGenderFilter('all')}
+                    className={`px-2 py-1 rounded transition cursor-pointer ${
+                      genderFilter === 'all' ? 'bg-[#37352f] text-white font-medium' : 'text-[#787774] hover:bg-[#eae9e5]'
+                    }`}
+                  >
+                    ทั้งหมด ({campaignDetails?.records?.length || 0})
+                  </button>
+                )}
+                
+                {/* ปุ่มเพศชาย (แสดงเฉพาะเมื่อไม่ใช่หัวข้อเฉพาะหญิง) */}
+                {selectedCampaign.targetGender !== 'female' && (
+                  <button
+                    onClick={() => setGenderFilter('male')}
+                    className={`px-2 py-1 rounded transition cursor-pointer ${
+                      genderFilter === 'male' ? 'bg-[#37352f] text-white font-medium' : 'text-[#787774] hover:bg-[#eae9e5]'
+                    }`}
+                  >
+                    ชาย ({campaignDetails?.records?.filter(r => r.gender === 'male').length || 0})
+                  </button>
+                )}
+
+                {/* ปุ่มเพศหญิง (แสดงเฉพาะเมื่อไม่ใช่หัวข้อเฉพาะชาย) */}
+                {selectedCampaign.targetGender !== 'male' && (
+                  <button
+                    onClick={() => setGenderFilter('female')}
+                    className={`px-2 py-1 rounded transition cursor-pointer ${
+                      genderFilter === 'female' ? 'bg-[#37352f] text-white font-medium' : 'text-[#787774] hover:bg-[#eae9e5]'
+                    }`}
+                  >
+                    หญิง ({campaignDetails?.records?.filter(r => r.gender === 'female').length || 0})
+                  </button>
+                )}
               </div>
 
               <div className="flex items-center gap-1.5">
@@ -517,7 +536,13 @@ export const AdminDashboard: React.FC<Props> = ({
               {loadingDetails ? (
                 <div className="py-12 text-center text-xs text-[#787774]">Loading...</div>
               ) : filteredRecords.length === 0 ? (
-                <div className="py-12 text-center text-xs text-[#787774]">ไม่มีไฟล์เสียงในหมวดนี้</div>
+                <div className="py-12 text-center text-xs text-[#787774]">
+                  {selectedCampaign.targetGender === 'female' && genderFilter === 'male'
+                    ? 'หัวข้อนี้เปิดรับเฉพาะเสียงผู้หญิง'
+                    : selectedCampaign.targetGender === 'male' && genderFilter === 'female'
+                    ? 'หัวข้อนี้เปิดรับเฉพาะเสียงผู้ชาย'
+                    : 'ยังไม่มีไฟล์เสียงในรายการนี้'}
+                </div>
               ) : (
                 filteredRecords.map((rec) => (
                   <div key={rec.id} className="px-6 py-3 flex items-center justify-between text-xs hover:bg-[#fbfbfa]">
