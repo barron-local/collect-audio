@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Campaign } from './types';
 import { AdminDashboard } from './components/AdminDashboard';
 import { AdminPinAuth } from './components/AdminPinAuth';
@@ -29,6 +29,8 @@ export function App() {
   // Gender change count from server/device
   const [genderChangeCount, setGenderChangeCount] = useState(0);
   const remainingGenderChanges = Math.max(0, MAX_GENDER_CHANGES_PER_DAY - genderChangeCount);
+  const userGenderRef = useRef(userGender);
+  userGenderRef.current = userGender;
 
   // Sync profile on mount (Strict server source of truth)
   const syncGenderLimit = async () => {
@@ -47,10 +49,12 @@ export function App() {
 
   // Listen to window focus or storage changes to immediately revert any manual tampering
   useEffect(() => {
+    syncGenderLimit();
+
     const handleStorageTamper = (e: StorageEvent) => {
-      if (e.key === 'voice_user_gender' && userGender && e.newValue !== userGender) {
+      if (e.key === 'voice_user_gender' && userGenderRef.current && e.newValue !== userGenderRef.current) {
         // บังคับเขียนทับกลับคืนทันที
-        localStorage.setItem('voice_user_gender', userGender);
+        localStorage.setItem('voice_user_gender', userGenderRef.current);
       }
     };
 
@@ -61,7 +65,7 @@ export function App() {
       window.removeEventListener('storage', handleStorageTamper);
       window.removeEventListener('focus', syncGenderLimit);
     };
-  }, [userGender]);
+  }, []);
 
   const handleSelectGender = async (gender: 'male' | 'female') => {
     const isChange = Boolean(userGender && userGender !== gender);
