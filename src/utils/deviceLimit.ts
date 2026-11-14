@@ -1,9 +1,15 @@
-// Device Fingerprint & Server-backed Gender Quota Service
+// 100% Server-backed Device Quota Service via Supabase
 import { supabase, isSupabaseConfigured } from './supabase';
 
 const DEVICE_ID_KEY = 'voice_client_device_id';
-const LOCAL_QUOTA_KEY = 'voice_gender_changes_meta';
 export const MAX_GENDER_CHANGES_PER_DAY = 3;
+
+// Clean up legacy localstorage keys if any remain
+try {
+  localStorage.removeItem('voice_gender_changes_meta');
+  localStorage.removeItem('voice_collector_topics');
+  localStorage.removeItem('voice_collector_records');
+} catch {}
 
 // 1. Generate or retrieve permanent device ID (Canvas + Screen + Audio context hash fallback)
 export function getOrCreateDeviceId(): string {
@@ -62,7 +68,6 @@ export async function syncDeviceGenderProfile(): Promise<{ assignedGender: 'male
           localStorage.setItem('voice_user_gender', serverGender);
         }
         serverCount = data.change_count || 0;
-        localStorage.setItem(LOCAL_QUOTA_KEY, JSON.stringify({ count: serverCount, date: cycleDate }));
         return { assignedGender: serverGender, changeCount: serverCount };
       }
     } catch (err) {
@@ -70,18 +75,9 @@ export async function syncDeviceGenderProfile(): Promise<{ assignedGender: 'male
     }
   }
 
-  // Fallback to local
+  // Fallback to local gender state only
   const localSaved = (localStorage.getItem('voice_user_gender') as 'male' | 'female') || '';
-  const localQuotaRaw = localStorage.getItem(LOCAL_QUOTA_KEY);
-  let localCount = 0;
-  if (localQuotaRaw) {
-    try {
-      const p = JSON.parse(localQuotaRaw);
-      if (p.date === cycleDate) localCount = p.count || 0;
-    } catch {}
-  }
-
-  return { assignedGender: localSaved, changeCount: localCount };
+  return { assignedGender: localSaved, changeCount: 0 };
 }
 
 // 3. Fetch today's gender change count (Syncs Supabase & Local fallback)
@@ -118,8 +114,7 @@ export async function saveAssignedGender(gender: 'male' | 'female', isChange: bo
     }
   }
 
-  // 2. Update local storage
+  // 2. Set active gender locally
   localStorage.setItem('voice_user_gender', gender);
-  localStorage.setItem(LOCAL_QUOTA_KEY, JSON.stringify({ count: newCount, date: cycleDate }));
   return newCount;
 }
