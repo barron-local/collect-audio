@@ -243,7 +243,7 @@ export const UserRecorder: React.FC<Props> = ({
         {/* Notion Quote Block for Script */}
         <div>
           <label className="block text-xs font-medium text-[#787774] uppercase tracking-wider mb-2">
-            ประโยคที่ต้องอ่าน
+            ประโยคที่ต้องพูด
           </label>
           <div className="border-l-3 border-[#37352f] pl-4 py-2.5 my-2 bg-[#f7f6f3] rounded-r">
             <p className="text-base text-[#37352f] font-normal leading-relaxed">

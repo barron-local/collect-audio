@@ -324,7 +324,7 @@ export const AdminDashboard: React.FC<Props> = ({
               </div>
 
               <div>
-                <label className="block text-xs text-[#787774] mb-1">ประโยคที่ต้องให้อ่าน *</label>
+                <label className="block text-xs text-[#787774] mb-1">ประโยคที่ต้องพูด *</label>
                 <textarea
                   required
                   rows={3}
