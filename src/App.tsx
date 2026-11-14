@@ -6,6 +6,7 @@ import { UserRecorder } from './components/UserRecorder';
 import { GenderModal } from './components/GenderModal';
 import { getCampaigns } from './utils/dataService';
 import { Folder, Search, X, ArrowLeft } from 'lucide-react';
+import { getGenderChangeCount, incrementGenderChangeCount, MAX_GENDER_CHANGES_PER_DAY } from './utils/deviceLimit';
 
 export function App() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
@@ -26,26 +27,19 @@ export function App() {
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Gender change rate limit per day (สูงสุด 3 ครั้งต่อวัน)
-  const MAX_GENDER_CHANGES_PER_DAY = 3;
+  // Gender change count from server/device
+  const [genderChangeCount, setGenderChangeCount] = useState(0);
+  const remainingGenderChanges = Math.max(0, MAX_GENDER_CHANGES_PER_DAY - genderChangeCount);
 
-  const getGenderChangeQuota = () => {
-    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-    const raw = localStorage.getItem('voice_gender_changes_meta');
-    if (!raw) return { count: 0, date: today };
-    try {
-      const parsed = JSON.parse(raw);
-      if (parsed.date !== today) {
-        return { count: 0, date: today };
-      }
-      return parsed;
-    } catch {
-      return { count: 0, date: today };
-    }
+  // Sync count on mount and when modal opens
+  const syncGenderLimit = async () => {
+    const count = await getGenderChangeCount();
+    setGenderChangeCount(count);
   };
 
-  const [genderChangeQuota, setGenderChangeQuota] = useState(getGenderChangeQuota);
-  const remainingGenderChanges = Math.max(0, MAX_GENDER_CHANGES_PER_DAY - genderChangeQuota.count);
+  useEffect(() => {
+    syncGenderLimit();
+  }, [showGenderModal]);
 
   useEffect(() => {
     const saved = localStorage.getItem('voice_user_gender');
@@ -54,18 +48,16 @@ export function App() {
     }
   }, []);
 
-  const handleSelectGender = (gender: 'male' | 'female') => {
-    const today = new Date().toISOString().slice(0, 10);
+  const handleSelectGender = async (gender: 'male' | 'female') => {
     // ถ้าเคยเลือกเพศแล้ว และกำลังเปลี่ยนเป็นเพศใหม่ ให้บันทึกโควตา
     if (userGender && userGender !== gender) {
-      const currentQuota = getGenderChangeQuota();
-      if (currentQuota.count >= MAX_GENDER_CHANGES_PER_DAY) {
-        alert('คุณได้เปลี่ยนเพศครบ 3 ครั้งของวันนี้แล้ว');
+      const currentCount = await getGenderChangeCount();
+      if (currentCount >= MAX_GENDER_CHANGES_PER_DAY) {
+        setGenderChangeCount(currentCount);
         return;
       }
-      const newQuota = { count: currentQuota.count + 1, date: today };
-      localStorage.setItem('voice_gender_changes_meta', JSON.stringify(newQuota));
-      setGenderChangeQuota(newQuota);
+      const updatedCount = await incrementGenderChangeCount();
+      setGenderChangeCount(updatedCount);
     }
 
     setUserGender(gender);
