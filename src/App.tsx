@@ -5,7 +5,7 @@ import { AdminPinAuth } from './components/AdminPinAuth';
 import { UserRecorder } from './components/UserRecorder';
 import { GenderModal } from './components/GenderModal';
 import { getCampaigns } from './utils/dataService';
-import { Folder, Search, X, ArrowLeft, FileQuestion } from 'lucide-react';
+import { Folder, Search, X, ArrowLeft } from 'lucide-react';
 
 export function App() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
@@ -165,27 +165,35 @@ export function App() {
       <main className="flex-1">
         {isNotFoundRoute ? (
           <div className="min-h-[75vh] flex items-center justify-center px-4">
-            <div className="w-full max-w-md border border-[#e9e9e7] rounded-lg p-8 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.02)] text-center">
-              <div className="w-12 h-12 mx-auto rounded-full bg-[#f7f6f3] border border-[#e9e9e7] flex items-center justify-center text-[#787774] mb-5">
-                <FileQuestion className="w-5 h-5 text-[#787774]" />
+            <div className="w-full max-w-md border border-[#e9e9e7] rounded-xl p-8 bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] text-center relative overflow-hidden">
+              {/* Subtle accent top border */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#eb5757] via-[#2383e2] to-[#37352f]" />
+
+              {/* Big Modern 404 Headline with subtle styling */}
+              <div className="my-2">
+                <span className="font-mono text-6xl font-extrabold tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-[#37352f] to-[#9b9a97] select-none">
+                  404
+                </span>
               </div>
 
-              <div className="inline-block text-[11px] font-mono font-medium text-[#787774] px-2 py-0.5 rounded bg-[#f7f6f3] border border-[#e9e9e7] mb-3">
-                Error 404
+              {/* Status Pill Badge */}
+              <div className="inline-flex items-center gap-1.5 text-[11px] font-mono font-medium text-[#eb5757] px-2.5 py-0.5 rounded-full bg-[#fdf5f5] border border-[#f7d7d7] mb-3">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#eb5757]" />
+                Page Not Found
               </div>
 
-              <h1 className="text-xl font-semibold text-[#37352f] tracking-tight mb-2">
+              <h1 className="text-lg font-semibold text-[#37352f] tracking-tight mb-2">
                 ไม่พบหน้าที่คุณต้องการ
               </h1>
               
               <p className="text-xs text-[#787774] leading-relaxed mb-6 max-w-xs mx-auto">
-                เส้นทาง <code className="px-1.5 py-0.5 rounded bg-[#f7f6f3] border border-[#e9e9e7] text-[#37352f] font-mono text-[11px]">{currentPath}</code> อาจถูกย้ายหรือไม่มีอยู่ในระบบ
+                เส้นทาง <code className="px-1.5 py-0.5 rounded bg-[#f7f6f3] border border-[#e9e9e7] text-[#37352f] font-mono text-[11px] font-medium">{currentPath}</code> ไม่มีอยู่ในระบบหรืออาจถูกย้ายไปแล้ว
               </p>
 
               <div className="pt-5 border-t border-[#e9e9e7] flex justify-center">
                 <button
                   onClick={() => navigateTo('/')}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#37352f] hover:bg-[#201f1d] text-white text-xs font-medium rounded transition cursor-pointer shadow-xs"
+                  className="inline-flex items-center gap-2 px-5 py-2 bg-[#37352f] hover:bg-[#201f1d] text-white text-xs font-medium rounded-md transition cursor-pointer shadow-sm active:scale-95"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" /> กลับสู่หน้าหลัก
                 </button>
