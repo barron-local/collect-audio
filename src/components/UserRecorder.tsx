@@ -396,7 +396,12 @@ export const UserRecorder: React.FC<Props> = ({
               </div>
             ) : (
               <div className="w-full space-y-4">
-                <audio controls src={recordedAudioUrl || ''} className="w-full h-9" />
+                <audio 
+                  controls 
+                  controlsList="nodownload noplaybackrate" 
+                  src={recordedAudioUrl || ''} 
+                  className="w-full h-9" 
+                />
 
                 <div className="flex items-center justify-end gap-2 pt-2">
                   <button
