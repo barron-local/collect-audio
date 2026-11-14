@@ -2,8 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import type { Campaign, AudioRecord } from '../types';
 import { convertWebmBlobToMp3 } from '../utils/audioConverter';
 import { uploadRecording, getCampaignDetails } from '../utils/dataService';
-import { exportCampaignZip } from '../utils/zipExporter';
-import { ArrowLeft, Mic, Square, RotateCcw, Upload, Lock, FileAudio, Download } from 'lucide-react';
+import { ArrowLeft, Mic, Square, RotateCcw, Upload, Lock, FileAudio } from 'lucide-react';
 
 interface Props {
   campaign: Campaign;
@@ -31,9 +30,6 @@ export const UserRecorder: React.FC<Props> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  // Folder download state
-  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
 
   // Community records inside this folder
   const [records, setRecords] = useState<AudioRecord[]>(campaign.records || []);
@@ -183,38 +179,6 @@ export const UserRecorder: React.FC<Props> = ({
       setErrorMessage(err.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
     } finally {
       setIsUploading(false);
-    }
-  };
-
-  // Download all files in folder as ZIP
-  const handleDownloadAllZip = async () => {
-    if (records.length === 0) return;
-    setIsDownloadingAll(true);
-    try {
-      await exportCampaignZip(campaign, records, 'all');
-    } catch (err: any) {
-      alert('ดาวน์โหลดไฟล์ทั้งหมดไม่สำเร็จ: ' + err.message);
-    } finally {
-      setIsDownloadingAll(false);
-    }
-  };
-
-  // Download single mp3 file
-  const handleDownloadSingle = async (rec: AudioRecord) => {
-    if (!rec.fileUrl) return;
-    try {
-      const response = await fetch(rec.fileUrl);
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${rec.gender}_${(rec.speakerName || 'user').replace(/[^a-zA-Z0-9\u0E00-\u0E7F_-]/g, '_')}_${rec.id}.mp3`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      window.open(rec.fileUrl, '_blank');
     }
   };
 
@@ -385,19 +349,6 @@ export const UserRecorder: React.FC<Props> = ({
             <span className="text-xs font-semibold text-[#37352f] uppercase tracking-wider">
               ไฟล์เสียงในโฟลเดอร์นี้ ({records.length})
             </span>
-
-            {/* Download All Button */}
-            {records.length > 0 && (
-              <button
-                onClick={handleDownloadAllZip}
-                disabled={isDownloadingAll}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs text-[#37352f] hover:bg-[#f7f6f3] border border-[#e9e9e7] rounded transition cursor-pointer disabled:opacity-50"
-                title="ดาวน์โหลดไฟล์ทั้งหมดเป็น ZIP"
-              >
-                <Download className="w-3 h-3 text-[#787774]" />
-                <span>{isDownloadingAll ? 'กำลังโหลด...' : 'โหลดทั้งหมด'}</span>
-              </button>
-            )}
           </div>
 
           <div className="border border-[#e9e9e7] rounded-lg divide-y divide-[#e9e9e7] bg-white overflow-hidden">
@@ -423,23 +374,13 @@ export const UserRecorder: React.FC<Props> = ({
                     </div>
                   </div>
 
-                  {/* Audio Controls and Download Button */}
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                  {/* Audio Controls Only (Downloads reserved for Admin) */}
+                  <div className="w-full sm:w-auto">
                     <audio 
                       controls 
                       src={rec.fileUrl || ''} 
-                      className="h-8 w-full sm:w-56 flex-1 min-w-0" 
+                      className="h-8 w-full sm:w-56" 
                     />
-
-                    {rec.fileUrl && (
-                      <button
-                        onClick={() => handleDownloadSingle(rec)}
-                        className="p-1.5 text-[#787774] hover:text-[#37352f] hover:bg-[#f7f6f3] border border-[#e9e9e7] rounded transition cursor-pointer shrink-0"
-                        title="ดาวน์โหลดไฟล์นี้ (.mp3)"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                      </button>
-                    )}
                   </div>
                 </div>
               ))
