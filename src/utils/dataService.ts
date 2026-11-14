@@ -1,12 +1,12 @@
 import { supabase, isSupabaseConfigured, BUCKET_NAME } from './supabase';
-import type { Campaign, AudioRecord } from '../types';
+import type { Topic, AudioRecord } from '../types';
 
-const LOCAL_CAMPAIGNS_KEY = 'voice_collector_campaigns';
+const LOCAL_TOPICS_KEY = 'voice_collector_topics';
 const LOCAL_RECORDS_KEY = 'voice_collector_records';
 
-const defaultCampaigns: Campaign[] = [
+const defaultTopics: Topic[] = [
   {
-    id: 'sample-1',
+    id: 'topic-1',
     title: 'ประโยคทดสอบพื้นฐาน 1',
     description: 'ประโยคภาษาไทยสำหรับการฝึกโมเดลเสียงสังเคราะห์และการรู้จำเสียงพูด',
     textToRead: 'สวัสดีครับ ยินดีต้อนรับเข้าสู่ระบบบันทึกเสียงเพื่อพัฒนาโมเดลปัญญาประดิษฐ์',
@@ -14,7 +14,7 @@ const defaultCampaigns: Campaign[] = [
     createdAt: new Date().toISOString()
   },
   {
-    id: 'sample-2',
+    id: 'topic-2',
     title: 'ประโยคคำถามและบริการ',
     description: 'ประโยคสอบถามข้อมูลทั่วไป',
     textToRead: 'วันนี้สภาพอากาศเป็นอย่างไรบ้าง และมีโปรโมชั่นอะไรน่าสนใจบ้างครับ',
@@ -23,16 +23,16 @@ const defaultCampaigns: Campaign[] = [
   }
 ];
 
-function getLocalCampaigns(): Campaign[] {
-  const data = localStorage.getItem(LOCAL_CAMPAIGNS_KEY);
+function getLocalTopics(): Topic[] {
+  const data = localStorage.getItem(LOCAL_TOPICS_KEY);
   if (!data) {
-    localStorage.setItem(LOCAL_CAMPAIGNS_KEY, JSON.stringify(defaultCampaigns));
-    return defaultCampaigns;
+    localStorage.setItem(LOCAL_TOPICS_KEY, JSON.stringify(defaultTopics));
+    return defaultTopics;
   }
   try {
     return JSON.parse(data);
   } catch {
-    return defaultCampaigns;
+    return defaultTopics;
   }
 }
 
@@ -46,81 +46,104 @@ function getLocalRecords(): AudioRecord[] {
   }
 }
 
-// 1. Get all campaigns with counts
-export async function getCampaigns(): Promise<Campaign[]> {
+// 1. Get all topics with counts (Checks both 'topics' and fallback 'campaigns' table)
+export async function getTopics(): Promise<Topic[]> {
   if (isSupabaseConfigured && supabase) {
-    const { data: camps, error: campErr } = await supabase
-      .from('campaigns')
+    // Try querying 'topics', fallback to 'campaigns' if user hasn't renamed table yet
+    let topicData: any[] = [];
+    const { data: topics, error: topicErr } = await supabase
+      .from('topics')
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (campErr) throw campErr;
+    if (!topicErr && topics) {
+      topicData = topics;
+    } else {
+      // Fallback to campaigns
+      const { data: camps } = await supabase
+        .from('campaigns')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (camps) topicData = camps;
+    }
 
-    const { data: recs, error: recErr } = await supabase
+    const { data: recs } = await supabase
       .from('audio_records')
-      .select('campaign_id, gender');
+      .select('*');
 
-    if (recErr) throw recErr;
-
-    return (camps || []).map(camp => {
-      const campRecords = (recs || []).filter(r => r.campaign_id === camp.id);
+    return topicData.map((item: any) => {
+      const topicRecords = (recs || []).filter(
+        (r: any) => r.topic_id === item.id || r.campaign_id === item.id
+      );
       return {
-        id: camp.id,
-        title: camp.title,
-        description: camp.description || '',
-        textToRead: camp.text_to_read,
-        targetGender: (camp.target_gender as 'all' | 'male' | 'female') || 'all',
-        createdAt: camp.created_at,
-        recordingCount: campRecords.length,
-        maleCount: campRecords.filter(r => r.gender === 'male').length,
-        femaleCount: campRecords.filter(r => r.gender === 'female').length
+        id: item.id,
+        title: item.title,
+        description: item.description || '',
+        textToRead: item.text_to_read,
+        targetGender: (item.target_gender as 'all' | 'male' | 'female') || 'all',
+        createdAt: item.created_at,
+        recordingCount: topicRecords.length,
+        maleCount: topicRecords.filter((r: any) => r.gender === 'male').length,
+        femaleCount: topicRecords.filter((r: any) => r.gender === 'female').length
       };
     });
   }
 
-  const camps = getLocalCampaigns();
+  // Fallback to local storage
+  const topics = getLocalTopics();
   const recs = getLocalRecords();
-  return camps.map(camp => {
-    const campRecords = recs.filter(r => r.campaignId === camp.id);
+  return topics.map(t => {
+    const topicRecords = recs.filter(r => r.topicId === t.id);
     return {
-      ...camp,
-      targetGender: camp.targetGender || 'all',
-      recordingCount: campRecords.length,
-      maleCount: campRecords.filter(r => r.gender === 'male').length,
-      femaleCount: campRecords.filter(r => r.gender === 'female').length
+      ...t,
+      targetGender: t.targetGender || 'all',
+      recordingCount: topicRecords.length,
+      maleCount: topicRecords.filter(r => r.gender === 'male').length,
+      femaleCount: topicRecords.filter(r => r.gender === 'female').length
     };
   });
 }
 
-// 2. Get campaign details with recordings
-export async function getCampaignDetails(campaignId: string): Promise<Campaign> {
+// 2. Get topic details with recordings
+export async function getTopicDetails(topicId: string): Promise<Topic> {
   if (isSupabaseConfigured && supabase) {
-    const { data: camp, error: campErr } = await supabase
-      .from('campaigns')
+    let item: any = null;
+    const { data: topic } = await supabase
+      .from('topics')
       .select('*')
-      .eq('id', campaignId)
+      .eq('id', topicId)
       .single();
 
-    if (campErr || !camp) throw new Error('ไม่พบประกาศ');
+    if (topic) {
+      item = topic;
+    } else {
+      const { data: camp } = await supabase
+        .from('campaigns')
+        .select('*')
+        .eq('id', topicId)
+        .single();
+      item = camp;
+    }
 
-    const { data: recs, error: recErr } = await supabase
+    if (!item) throw new Error('ไม่พบหัวข้อนี้');
+
+    // Query audio_records for this topic
+    const { data: recs } = await supabase
       .from('audio_records')
       .select('*')
-      .eq('campaign_id', campaignId)
+      .or(`topic_id.eq.${topicId},campaign_id.eq.${topicId}`)
       .order('recorded_at', { ascending: false });
 
-    if (recErr) throw recErr;
-
     return {
-      id: camp.id,
-      title: camp.title,
-      description: camp.description || '',
-      textToRead: camp.text_to_read,
-      targetGender: (camp.target_gender as 'all' | 'male' | 'female') || 'all',
-      createdAt: camp.created_at,
-      records: (recs || []).map(r => ({
+      id: item.id,
+      title: item.title,
+      description: item.description || '',
+      textToRead: item.text_to_read,
+      targetGender: (item.target_gender as 'all' | 'male' | 'female') || 'all',
+      createdAt: item.created_at,
+      records: (recs || []).map((r: any) => ({
         id: r.id,
-        campaignId: r.campaign_id,
+        topicId: r.topic_id || r.campaign_id,
         speakerName: r.speaker_name,
         gender: r.gender,
         durationSeconds: r.duration_seconds,
@@ -132,27 +155,27 @@ export async function getCampaignDetails(campaignId: string): Promise<Campaign> 
     };
   }
 
-  const camps = getLocalCampaigns();
-  const camp = camps.find(c => c.id === campaignId);
-  if (!camp) throw new Error('ไม่พบประกาศ');
+  const topics = getLocalTopics();
+  const topic = topics.find(t => t.id === topicId);
+  if (!topic) throw new Error('ไม่พบหัวข้อนี้');
 
-  const recs = getLocalRecords().filter(r => r.campaignId === campaignId);
+  const recs = getLocalRecords().filter(r => r.topicId === topicId);
   return {
-    ...camp,
-    targetGender: camp.targetGender || 'all',
+    ...topic,
+    targetGender: topic.targetGender || 'all',
     records: recs
   };
 }
 
-// 3. Create campaign
-export async function createCampaign(
+// 3. Create topic
+export async function createTopic(
   title: string, 
   description: string, 
   textToRead: string, 
   targetGender: 'all' | 'male' | 'female' = 'all'
-): Promise<Campaign> {
-  const newCamp: Campaign = {
-    id: 'camp-' + Date.now(),
+): Promise<Topic> {
+  const newTopic: Topic = {
+    id: 'topic-' + Date.now(),
     title: title.trim(),
     description: (description || '').trim(),
     textToRead: textToRead.trim(),
@@ -161,35 +184,31 @@ export async function createCampaign(
   };
 
   if (isSupabaseConfigured && supabase) {
-    const { error } = await supabase.from('campaigns').insert({
-      id: newCamp.id,
-      title: newCamp.title,
-      description: newCamp.description,
-      text_to_read: newCamp.textToRead,
+    const payload = {
+      id: newTopic.id,
+      title: newTopic.title,
+      description: newTopic.description,
+      text_to_read: newTopic.textToRead,
       target_gender: targetGender,
-      created_at: newCamp.createdAt
-    });
+      created_at: newTopic.createdAt
+    };
+
+    // Try inserting into 'topics', fallback to 'campaigns'
+    const { error } = await supabase.from('topics').insert(payload);
     if (error) {
-      const { error: retryError } = await supabase.from('campaigns').insert({
-        id: newCamp.id,
-        title: newCamp.title,
-        description: newCamp.description,
-        text_to_read: newCamp.textToRead,
-        created_at: newCamp.createdAt
-      });
-      if (retryError) throw retryError;
+      await supabase.from('campaigns').insert(payload);
     }
-    return newCamp;
+    return newTopic;
   }
 
-  const camps = getLocalCampaigns();
-  camps.unshift(newCamp);
-  localStorage.setItem(LOCAL_CAMPAIGNS_KEY, JSON.stringify(camps));
-  return newCamp;
+  const topics = getLocalTopics();
+  topics.unshift(newTopic);
+  localStorage.setItem(LOCAL_TOPICS_KEY, JSON.stringify(topics));
+  return newTopic;
 }
 
-// 4. Update campaign
-export async function updateCampaign(
+// 4. Update topic
+export async function updateTopic(
   id: string,
   updates: {
     title: string;
@@ -201,52 +220,42 @@ export async function updateCampaign(
   const { title, description, textToRead, targetGender } = updates;
 
   if (isSupabaseConfigured && supabase) {
-    const { error } = await supabase
-      .from('campaigns')
-      .update({
-        title: title.trim(),
-        description: (description || '').trim(),
-        text_to_read: textToRead.trim(),
-        target_gender: targetGender
-      })
-      .eq('id', id);
+    const payload = {
+      title: title.trim(),
+      description: (description || '').trim(),
+      text_to_read: textToRead.trim(),
+      target_gender: targetGender
+    };
 
+    const { error } = await supabase.from('topics').update(payload).eq('id', id);
     if (error) {
-      // Fallback if target_gender not yet altered
-      const { error: retryError } = await supabase
-        .from('campaigns')
-        .update({
-          title: title.trim(),
-          description: (description || '').trim(),
-          text_to_read: textToRead.trim()
-        })
-        .eq('id', id);
-      if (retryError) throw retryError;
+      await supabase.from('campaigns').update(payload).eq('id', id);
     }
     return;
   }
 
-  const camps = getLocalCampaigns();
-  const index = camps.findIndex(c => c.id === id);
+  const topics = getLocalTopics();
+  const index = topics.findIndex(t => t.id === id);
   if (index !== -1) {
-    camps[index] = {
-      ...camps[index],
+    topics[index] = {
+      ...topics[index],
       title: title.trim(),
       description: (description || '').trim(),
       textToRead: textToRead.trim(),
       targetGender
     };
-    localStorage.setItem(LOCAL_CAMPAIGNS_KEY, JSON.stringify(camps));
+    localStorage.setItem(LOCAL_TOPICS_KEY, JSON.stringify(topics));
   }
 }
 
-// 5. Delete campaign
-export async function deleteCampaign(campaignId: string): Promise<void> {
+// 5. Delete topic
+export async function deleteTopic(topicId: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
+    // Delete associated files from storage
     const { data: recs } = await supabase
       .from('audio_records')
       .select('filename')
-      .eq('campaign_id', campaignId);
+      .or(`topic_id.eq.${topicId},campaign_id.eq.${topicId}`);
 
     if (recs && recs.length > 0) {
       const filePaths = recs.map(r => r.filename).filter(Boolean);
@@ -255,31 +264,33 @@ export async function deleteCampaign(campaignId: string): Promise<void> {
       }
     }
 
-    const { error } = await supabase.from('campaigns').delete().eq('id', campaignId);
-    if (error) throw error;
+    const { error } = await supabase.from('topics').delete().eq('id', topicId);
+    if (error) {
+      await supabase.from('campaigns').delete().eq('id', topicId);
+    }
     return;
   }
 
-  const camps = getLocalCampaigns().filter(c => c.id !== campaignId);
-  const recs = getLocalRecords().filter(r => r.campaignId !== campaignId);
-  localStorage.setItem(LOCAL_CAMPAIGNS_KEY, JSON.stringify(camps));
+  const topics = getLocalTopics().filter(t => t.id !== topicId);
+  const recs = getLocalRecords().filter(r => r.topicId !== topicId);
+  localStorage.setItem(LOCAL_TOPICS_KEY, JSON.stringify(topics));
   localStorage.setItem(LOCAL_RECORDS_KEY, JSON.stringify(recs));
 }
 
 // 6. Upload Audio (.mp3)
 export async function uploadRecording(params: {
   mp3Blob: Blob;
-  campaignId: string;
+  topicId: string;
   speakerName: string;
   gender: 'male' | 'female' | 'other';
   durationSeconds: number;
 }): Promise<AudioRecord> {
-  const { mp3Blob, campaignId, speakerName, gender, durationSeconds } = params;
+  const { mp3Blob, topicId, speakerName, gender, durationSeconds } = params;
   const recId = 'rec-' + Date.now();
   const cleanSpeaker = speakerName.trim() || 'ไม่ระบุชื่อ';
 
   if (isSupabaseConfigured && supabase) {
-    const filePath = `${campaignId}/${gender}/${recId}.mp3`;
+    const filePath = `${topicId}/${gender}/${recId}.mp3`;
 
     const { error: uploadError } = await supabase.storage
       .from(BUCKET_NAME)
@@ -299,9 +310,10 @@ export async function uploadRecording(params: {
 
     const fileUrl = urlData?.publicUrl || '';
 
-    const { error: insertError } = await supabase.from('audio_records').insert({
+    // Insert into audio_records (support topic_id and campaign_id)
+    const recordPayload: any = {
       id: recId,
-      campaign_id: campaignId,
+      topic_id: topicId,
       speaker_name: cleanSpeaker,
       gender,
       duration_seconds: durationSeconds,
@@ -309,13 +321,19 @@ export async function uploadRecording(params: {
       file_url: fileUrl,
       file_size: mp3Blob.size,
       recorded_at: new Date().toISOString()
-    });
+    };
 
-    if (insertError) throw insertError;
+    const { error: insertError } = await supabase.from('audio_records').insert(recordPayload);
+    if (insertError) {
+      // Fallback if column is still campaign_id
+      delete recordPayload.topic_id;
+      recordPayload.campaign_id = topicId;
+      await supabase.from('audio_records').insert(recordPayload);
+    }
 
     return {
       id: recId,
-      campaignId,
+      topicId,
       speakerName: cleanSpeaker,
       gender,
       durationSeconds,
@@ -334,7 +352,7 @@ export async function uploadRecording(params: {
 
   const record: AudioRecord = {
     id: recId,
-    campaignId,
+    topicId,
     speakerName: cleanSpeaker,
     gender,
     durationSeconds,
@@ -364,3 +382,10 @@ export async function deleteRecording(recordId: string, filename?: string): Prom
   const recs = getLocalRecords().filter(r => r.id !== recordId);
   localStorage.setItem(LOCAL_RECORDS_KEY, JSON.stringify(recs));
 }
+
+// Backwards-compatible aliases
+export const getCampaigns = getTopics;
+export const getCampaignDetails = getTopicDetails;
+export const createCampaign = createTopic;
+export const updateCampaign = updateTopic;
+export const deleteCampaign = deleteTopic;

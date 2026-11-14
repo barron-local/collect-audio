@@ -160,7 +160,7 @@ export const UserRecorder: React.FC<Props> = ({
       localStorage.setItem('voice_speaker_name', speakerName);
       await uploadRecording({
         mp3Blob: recordedMp3Blob,
-        campaignId: campaign.id,
+        topicId: campaign.id,
         speakerName,
         gender,
         durationSeconds: recordingDuration

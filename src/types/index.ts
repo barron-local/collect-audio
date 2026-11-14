@@ -1,4 +1,4 @@
-export interface Campaign {
+export interface Topic {
   id: string;
   title: string;
   description: string;
@@ -11,9 +11,12 @@ export interface Campaign {
   records?: AudioRecord[];
 }
 
+// Alias for backwards compatibility if needed
+export type Campaign = Topic;
+
 export interface AudioRecord {
   id: string;
-  campaignId: string;
+  topicId: string;
   speakerName: string;
   gender: 'male' | 'female' | 'other';
   durationSeconds: number;

@@ -1,7 +1,9 @@
--- รันคำสั่ง SQL ด้านล่างนี้ใน Supabase SQL Editor ของคุณ
+-- ==============================================================================
+-- สคริปต์สำหรับสร้างฐานข้อมูล Voice Collector ใน Supabase (ใช้ชื่อ topics แทน campaigns)
+-- ==============================================================================
 
--- 1. สร้างตาราง campaigns (สำหรับเก็บประกาศ/โฟลเดอร์ประโยค)
-CREATE TABLE IF NOT EXISTS campaigns (
+-- 1. สร้างตาราง topics (สำหรับเก็บหัวข้อ/ประโยคที่ต้องการให้อัดเสียง)
+CREATE TABLE IF NOT EXISTS topics (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   description TEXT,
@@ -10,13 +12,10 @@ CREATE TABLE IF NOT EXISTS campaigns (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- หากสร้างตาราง campaigns ไว้แล้ว ให้รันคำสั่งเพิ่มคอลัมน์ target_gender นี้:
-ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS target_gender TEXT DEFAULT 'all';
-
--- 2. สร้างตาราง audio_records (สำหรับเก็บบันทึกเสียงผู้ใช้)
+-- 2. สร้างตาราง audio_records (สำหรับเก็บบันทึกเสียงของผู้ใช้งาน)
 CREATE TABLE IF NOT EXISTS audio_records (
   id TEXT PRIMARY KEY,
-  campaign_id TEXT NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+  topic_id TEXT NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
   speaker_name TEXT DEFAULT 'ไม่ระบุชื่อ',
   gender TEXT NOT NULL CHECK (gender IN ('male', 'female', 'other')),
   duration_seconds NUMERIC DEFAULT 0,
@@ -26,11 +25,17 @@ CREATE TABLE IF NOT EXISTS audio_records (
   recorded_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. เพิ่ม Index เพื่อให้ query ข้อมูลได้รวดเร็ว
-CREATE INDEX IF NOT EXISTS idx_audio_records_campaign_id ON audio_records(campaign_id);
+-- 3. เพิ่ม Index เพื่อให้ค้นหาได้รวดเร็ว
+CREATE INDEX IF NOT EXISTS idx_audio_records_topic_id ON audio_records(topic_id);
 CREATE INDEX IF NOT EXISTS idx_audio_records_gender ON audio_records(gender);
 
 -- 4. ตั้งค่า Storage Bucket ใน Supabase Storage
--- ไปที่ Supabase Dashboard -> Storage -> กด New Bucket
--- ตั้งชื่อ Bucket: audio-recordings
--- กำหนดให้เป็น Public bucket
+-- ไปที่ Supabase Dashboard -> Storage -> สร้าง Bucket ชื่อ: audio-recordings (ตั้งเป็น Public bucket)
+
+-- ==============================================================================
+-- *สำหรับผู้ที่เคยสร้างตาราง campaigns เดิมไว้แล้ว และต้องการเปลี่ยนชื่อมาเป็น topics*
+-- ให้รันคำสั่ง Migration ด้านล่างนี้:
+-- ==============================================================================
+-- ALTER TABLE IF EXISTS campaigns RENAME TO topics;
+-- ALTER TABLE IF EXISTS audio_records RENAME COLUMN campaign_id TO topic_id;
+-- ==============================================================================
