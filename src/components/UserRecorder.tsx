@@ -419,7 +419,7 @@ export const UserRecorder: React.FC<Props> = ({
                   >
                     {isUploading ? 'กำลังส่งข้อมูล...' : uploadSuccess ? 'ส่งสำเร็จแล้ว' : (
                       <>
-                        <Upload className="w-3.5 h-3.5" /> ส่งไฟล์เสียง (.mp3)
+                        <Upload className="w-3.5 h-3.5" /> ส่งไฟล์เสียง
                       </>
                     )}
                   </button>
