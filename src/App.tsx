@@ -5,7 +5,7 @@ import { AdminPinAuth } from './components/AdminPinAuth';
 import { UserRecorder } from './components/UserRecorder';
 import { GenderModal } from './components/GenderModal';
 import { getCampaigns } from './utils/dataService';
-import { Folder, Search, X, ArrowLeft } from 'lucide-react';
+import { Folder, Search, X, ArrowLeft, AlertCircle } from 'lucide-react';
 import { saveVerifiedGender, verifyGenderIntegrity } from './utils/genderIntegrity';
 import { fetchServerGenderChangeCount, incrementServerGenderChangeCount, MAX_GENDER_CHANGES_PER_DAY } from './utils/deviceGenderLimit';
 
@@ -51,7 +51,7 @@ export function App() {
 
       // กรณีที่ 1: เคยเลือกเพศแล้ว แต่ไปแอบลบค่าใน localStorage
       if (!saved && hasEverSelected) {
-        setTamperWarning('พบการลบข้อมูลในเบราว์เซอร์ ระบบได้คืนค่าเดิมของคุณเรียบร้อย');
+        setTamperWarning('ข้อมูลเพศไม่ถูกต้อง ระบบได้คืนค่าเดิมของคุณเรียบร้อย');
         setUserGender('male');
         await saveVerifiedGender('male');
         return;
@@ -65,7 +65,7 @@ export function App() {
       // กรณีที่ 2: มีค่า แต่ Signature ไม่ตรง (แอบพิมพ์แก้ค่าใน DevTools)
       const isValid = await verifyGenderIntegrity(saved);
       if (!isValid) {
-        setTamperWarning('พบการแก้ไขข้อมูลเพศในเบราว์เซอร์ ระบบได้คืนค่าเดิมของคุณเรียบร้อย');
+        setTamperWarning('ข้อมูลเพศไม่ถูกต้อง ระบบได้คืนค่าเดิมของคุณเรียบร้อย');
         const restoredGender = saved === 'female' ? 'male' : 'female';
         setUserGender(restoredGender);
         await saveVerifiedGender(restoredGender);
@@ -276,11 +276,14 @@ export function App() {
             <div className="max-w-4xl mx-auto px-6 py-12">
               {/* Minimalist Notion Alert */}
               {tamperWarning && (
-                <div className="mb-6 p-3.5 rounded bg-[#fdf5f5] border border-[#f7d7d7] text-xs text-[#eb5757] flex items-center justify-between gap-3">
-                  <span>{tamperWarning}</span>
+                <div className="mb-6 px-4 py-3 rounded-md bg-[#fdf5f5] border border-[#f7d7d7] text-xs text-[#eb5757] flex items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-center gap-2.5">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-[#eb5757]" />
+                    <span className="font-medium">{tamperWarning}</span>
+                  </div>
                   <button
                     onClick={() => setTamperWarning(null)}
-                    className="text-[#eb5757] hover:text-[#c53b3b] cursor-pointer shrink-0 font-medium"
+                    className="text-[#eb5757] hover:text-[#c53b3b] cursor-pointer shrink-0 font-medium px-2 py-0.5 rounded hover:bg-[#fae6e6] transition text-xs"
                   >
                     ปิด
                   </button>
