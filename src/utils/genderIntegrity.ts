@@ -23,5 +23,14 @@ export async function verifyGenderIntegrity(gender: string): Promise<boolean> {
 export async function saveVerifiedGender(gender: 'male' | 'female'): Promise<void> {
   const sig = await createGenderSignature(gender);
   localStorage.setItem('voice_user_gender', gender);
+  localStorage.setItem('voice_user_gender_backup', gender);
   localStorage.setItem(SIG_KEY, sig);
+}
+
+// 4. กู้คืนค่าเพศเดิมที่ถูกต้องจาก Backup หรือ Default เมื่อตรวจพบการดัดแปลง
+export async function recoverVerifiedGender(): Promise<'male' | 'female'> {
+  const backup = localStorage.getItem('voice_user_gender_backup');
+  const validGender = backup === 'female' ? 'female' : 'male';
+  await saveVerifiedGender(validGender);
+  return validGender;
 }
