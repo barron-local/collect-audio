@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Campaign } from '../types';
 import { createCampaign, updateCampaign, deleteCampaign, getCampaignDetails, deleteRecording } from '../utils/dataService';
 import { exportCampaignZip } from '../utils/zipExporter';
@@ -43,6 +43,22 @@ export const AdminDashboard: React.FC<Props> = ({
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [genderFilter, setGenderFilter] = useState<'all' | 'male' | 'female'>('all');
   const [isExportingZip, setIsExportingZip] = useState(false);
+
+  // Realtime polling 1s สำหรับอัปเดตไฟล์เสียงในโฟลเดอร์ที่เปิดอยู่
+  useEffect(() => {
+    if (!selectedCampaign) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const data = await getCampaignDetails(selectedCampaign.id);
+        setCampaignDetails(data);
+      } catch (err) {
+        // เงียบไว้เพื่อไม่ให้ขัดจังหวะ admin
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [selectedCampaign?.id]);
 
   const openCreateModal = () => {
     setEditingCampaignId(null);
