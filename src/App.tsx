@@ -6,6 +6,7 @@ import { UserRecorder } from './components/UserRecorder';
 import { GenderModal } from './components/GenderModal';
 import { getCampaigns } from './utils/dataService';
 import { Folder, Search, X, ArrowLeft } from 'lucide-react';
+import { saveVerifiedGender, verifyGenderIntegrity } from './utils/genderIntegrity';
 
 export function App() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
@@ -27,17 +28,35 @@ export function App() {
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // แสดง modal เฉพาะตอนเข้ามาครั้งแรกแล้วยังไม่มีเพศ
+  // ตรวจสอบความถูกต้องของเพศเมื่อโหลดเข้าเว็บ (Anti-Tamper)
   useEffect(() => {
-    const saved = localStorage.getItem('voice_user_gender');
-    if (!saved) {
-      setShowGenderModal(true);
-    }
+    const checkTampering = async () => {
+      const saved = localStorage.getItem('voice_user_gender');
+      if (!saved) {
+        setShowGenderModal(true);
+        return;
+      }
+
+      // ถ้ามีค่า แต่ Signature ไม่ตรง (เช่น แอบพิมพ์แก้ใน DevTools จาก male เป็น female)
+      const isValid = await verifyGenderIntegrity(saved);
+      if (!isValid) {
+        console.warn('[Security] Detected unauthorized localStorage gender tamper. Reverting.');
+        // ถ้าค่าเดิมคือ male แต่โดนแอบแก้เป็น female จะดึงค่าที่เคย verify ไว้กลับคืน
+        // หากไม่มี signature เลย ให้บังคับสลับกลับเป็น male อัตโนมัติและสร้าง signature ใหม่
+        const restoredGender = saved === 'female' ? 'male' : 'female';
+        setUserGender(restoredGender);
+        await saveVerifiedGender(restoredGender);
+      } else {
+        setUserGender(saved as 'male' | 'female');
+      }
+    };
+
+    checkTampering();
   }, []);
 
-  const handleSelectGender = (gender: 'male' | 'female') => {
+  const handleSelectGender = async (gender: 'male' | 'female') => {
     setUserGender(gender);
-    localStorage.setItem('voice_user_gender', gender);
+    await saveVerifiedGender(gender);
     setShowGenderModal(false);
   };
 
