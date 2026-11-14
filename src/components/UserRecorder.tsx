@@ -31,9 +31,6 @@ export const UserRecorder: React.FC<Props> = ({
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Audio level meter
-  const [audioLevel, setAudioLevel] = useState(0);
-
   // Community records inside this folder
   const [records, setRecords] = useState<AudioRecord[]>(campaign.records || []);
 
@@ -44,8 +41,6 @@ export const UserRecorder: React.FC<Props> = ({
   const audioChunksRef = useRef<Blob[]>([]);
   const timerIntervalRef = useRef<any>(null);
   const audioStreamRef = useRef<MediaStream | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const animFrameRef = useRef<number | null>(null);
 
   const fetchRecords = async () => {
     try {
@@ -69,7 +64,6 @@ export const UserRecorder: React.FC<Props> = ({
       }
       stopAudioStreams();
       clearInterval(timerIntervalRef.current);
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
   }, [recordedAudioUrl]);
 
@@ -78,15 +72,6 @@ export const UserRecorder: React.FC<Props> = ({
       audioStreamRef.current.getTracks().forEach(track => track.stop());
       audioStreamRef.current = null;
     }
-    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-      audioContextRef.current.close().catch(() => {});
-      audioContextRef.current = null;
-    }
-    if (animFrameRef.current) {
-      cancelAnimationFrame(animFrameRef.current);
-      animFrameRef.current = null;
-    }
-    setAudioLevel(0);
   };
 
   const startRecording = async () => {
@@ -104,32 +89,6 @@ export const UserRecorder: React.FC<Props> = ({
         } 
       });
       audioStreamRef.current = stream;
-
-      // Audio visualizer setup
-      try {
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        audioContextRef.current = audioContext;
-        const source = audioContext.createMediaStreamSource(stream);
-        const analyser = audioContext.createAnalyser();
-        analyser.fftSize = 64;
-        source.connect(analyser);
-
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
-        const checkAudio = () => {
-          if (!mediaRecorderRef.current || mediaRecorderRef.current.state !== 'recording') return;
-          analyser.getByteFrequencyData(dataArray);
-          let sum = 0;
-          for (let i = 0; i < dataArray.length; i++) {
-            sum += dataArray[i];
-          }
-          const avg = sum / dataArray.length;
-          setAudioLevel(Math.min(100, Math.round((avg / 128) * 100)));
-          animFrameRef.current = requestAnimationFrame(checkAudio);
-        };
-        animFrameRef.current = requestAnimationFrame(checkAudio);
-      } catch (err) {
-        console.error('AudioContext meter failed', err);
-      }
 
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
@@ -297,30 +256,16 @@ export const UserRecorder: React.FC<Props> = ({
         <div className="pt-4 border-t border-[#e9e9e7]">
           <div className="flex flex-col items-center justify-center p-6 border border-[#e9e9e7] rounded-lg bg-white">
             
-            {/* Live Status Indicator & Timer */}
-            <div className="flex flex-col items-center gap-1.5 mb-4">
-              {isRecording ? (
-                <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-[#eb5757]/10 text-[#eb5757] text-xs font-medium border border-[#eb5757]/20">
-                  <span className="w-2 h-2 rounded-full bg-[#eb5757] animate-ping" />
-                  <span>กำลังอัดเสียง — พูดได้เลยทันที</span>
-                </div>
-              ) : recordedMp3Blob ? (
-                <span className="text-xs text-[#2b784c] font-medium">บันทึกเสียงสำเร็จ ลองกดฟังด้านล่าง</span>
-              ) : (
-                <span className="text-xs text-[#787774]">กดปุ่มเพื่อเริ่มอัดเสียง</span>
-              )}
-
+            {/* Status & Timer */}
+            <div className="flex flex-col items-center gap-1 mb-4">
               <div className="text-3xl font-mono text-[#37352f] font-semibold tracking-tight">
                 {formatTime(recordingSeconds)}
               </div>
 
-              {/* Minimal Waveform / Voice Activity Bar */}
               {isRecording && (
-                <div className="w-32 h-1 bg-[#e9e9e7] rounded-full overflow-hidden mt-1">
-                  <div 
-                    className="h-full bg-[#eb5757] transition-all duration-75"
-                    style={{ width: `${Math.max(10, audioLevel)}%` }}
-                  />
+                <div className="flex items-center gap-1.5 text-xs text-[#eb5757] font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#eb5757] animate-pulse" />
+                  <span>Recording</span>
                 </div>
               )}
             </div>
