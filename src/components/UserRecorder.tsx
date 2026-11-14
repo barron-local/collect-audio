@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import type { Campaign, AudioRecord } from '../types';
 import { convertWebmBlobToMp3 } from '../utils/audioConverter';
 import { uploadRecording, getCampaignDetails } from '../utils/dataService';
-import { ArrowLeft, Mic, Square, RotateCcw, Upload, Lock, FileAudio } from 'lucide-react';
+import { ArrowLeft, Mic, Square, RotateCcw, Upload, Lock, FileAudio, AlertCircle } from 'lucide-react';
 
 interface Props {
   campaign: Campaign;
@@ -30,6 +30,7 @@ export const UserRecorder: React.FC<Props> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [micVolume, setMicVolume] = useState<number>(0);
 
   // Community records inside this folder
   const [records, setRecords] = useState<AudioRecord[]>(campaign.records || []);
@@ -41,6 +42,9 @@ export const UserRecorder: React.FC<Props> = ({
   const audioChunksRef = useRef<Blob[]>([]);
   const timerIntervalRef = useRef<any>(null);
   const audioStreamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
 
   const fetchRecords = async () => {
     try {
@@ -68,10 +72,19 @@ export const UserRecorder: React.FC<Props> = ({
   }, [recordedAudioUrl]);
 
   const stopAudioStreams = () => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
     if (audioStreamRef.current) {
       audioStreamRef.current.getTracks().forEach(track => track.stop());
       audioStreamRef.current = null;
     }
+    setMicVolume(0);
   };
 
   const startRecording = async () => {
@@ -89,6 +102,38 @@ export const UserRecorder: React.FC<Props> = ({
         } 
       });
       audioStreamRef.current = stream;
+
+      // Audio Context & Analyser for Real-time Visualizer
+      try {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        const audioCtx = new AudioContextClass();
+        audioContextRef.current = audioCtx;
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 64;
+        analyser.smoothingTimeConstant = 0.5;
+        analyserRef.current = analyser;
+
+        const source = audioCtx.createMediaStreamSource(stream);
+        source.connect(analyser);
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        const updateLevel = () => {
+          if (!analyserRef.current) return;
+          analyserRef.current.getByteFrequencyData(dataArray);
+          // คำนวณค่าเฉลี่ย volume 0 - 100
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) {
+            sum += dataArray[i];
+          }
+          const avg = sum / dataArray.length;
+          const normalized = Math.min(100, Math.round((avg / 128) * 100));
+          setMicVolume(normalized);
+          animationFrameRef.current = requestAnimationFrame(updateLevel);
+        };
+        updateLevel();
+      } catch (audioCtxErr) {
+        console.warn('AudioContext visualization not available:', audioCtxErr);
+      }
 
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
@@ -130,7 +175,13 @@ export const UserRecorder: React.FC<Props> = ({
 
     } catch (err: any) {
       console.error('Microphone access denied:', err);
-      setErrorMessage('ไม่สามารถเข้าถึงไมโครโฟนได้ กรุณาอนุญาตการใช้ไมโครโฟน');
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setErrorMessage('กรุณาอนุญาตการเข้าถึงไมโครโฟนในเบราว์เซอร์เพื่อเริ่มบันทึกเสียง');
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        setErrorMessage('ไม่พบอุปกรณ์ไมโครโฟนบนอุปกรณ์ของคุณ กรุณาเชื่อมต่อไมโครโฟน');
+      } else {
+        setErrorMessage('ไม่สามารถเข้าถึงไมโครโฟนได้: ' + (err.message || 'เกิดข้อผิดพลาด'));
+      }
     }
   };
 
@@ -223,6 +274,23 @@ export const UserRecorder: React.FC<Props> = ({
         )}
       </div>
 
+      {/* Notion-style Microphone Permission Warning / Error Notice */}
+      {errorMessage && (
+        <div className="mb-6 p-3.5 bg-[#fdf5f5] border border-[#f7d7d7] rounded text-xs text-[#eb5757] flex items-start gap-2.5">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <div className="flex-1 leading-relaxed">
+            <span className="font-semibold block mb-0.5">การเข้าถึงไมโครโฟน</span>
+            {errorMessage}
+          </div>
+          <button 
+            onClick={() => setErrorMessage(null)} 
+            className="text-[#eb5757] hover:text-[#c53b3b] cursor-pointer text-xs"
+          >
+            ปิด
+          </button>
+        </div>
+      )}
+
       <div className="space-y-8">
         {/* Speaker Name Input */}
         <div>
@@ -261,12 +329,28 @@ export const UserRecorder: React.FC<Props> = ({
                 {formatTime(recordingSeconds)}
               </div>
 
-              {isRecording && (
-                <div className="flex items-center gap-1.5 text-xs text-[#eb5757] font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#eb5757] animate-pulse" />
-                  <span>Recording</span>
+              {isRecording ? (
+                <div className="flex flex-col items-center gap-2 mt-1">
+                  <div className="flex items-center gap-1.5 text-xs text-[#eb5757] font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#eb5757] animate-pulse" />
+                    <span>กำลังบันทึกเสียง</span>
+                  </div>
+
+                  {/* Minimalist Notion Audio Visualizer Waveform */}
+                  <div className="flex items-center gap-1 h-5 px-3 py-1 bg-[#f7f6f3] border border-[#e9e9e7] rounded-full">
+                    {[18, 42, 65, 88, 55, 30, 70, 45].map((factor, idx) => {
+                      const level = Math.max(15, Math.min(100, (micVolume * (factor / 50))));
+                      return (
+                        <div
+                          key={idx}
+                          className="w-1 bg-[#37352f] rounded-full transition-all duration-75"
+                          style={{ height: `${Math.max(4, Math.round((level / 100) * 16))}px` }}
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
-              )}
+              ) : null}
             </div>
 
             {!isGenderAllowed ? (
