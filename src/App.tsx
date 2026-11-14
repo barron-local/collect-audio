@@ -257,30 +257,41 @@ export function App() {
                         }}
                         className="p-4 hover:bg-[#f7f6f3] transition cursor-pointer flex items-center justify-between"
                       >
-                        <div className="flex items-start gap-3">
+                        <div className="flex items-start gap-3 flex-1 min-w-0 pr-4">
                           <Folder className="w-4 h-4 text-[#787774] mt-0.5 shrink-0" />
-                          <div>
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <h2 className="text-sm font-semibold text-[#37352f]">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h2 className="text-sm font-semibold text-[#37352f] truncate">
                                 {camp.title}
                               </h2>
                               {target === 'male' && (
-                                <span className="text-[10px] text-[#787774] px-1.5 py-0.2 rounded bg-[#f0f0ee] border border-[#e5e5e3]">
+                                <span className="text-[10px] text-[#787774] px-1.5 py-0.2 rounded bg-[#f0f0ee] border border-[#e5e5e3] shrink-0">
                                   รับเฉพาะเพศชาย
                                 </span>
                               )}
                               {target === 'female' && (
-                                <span className="text-[10px] text-[#787774] px-1.5 py-0.2 rounded bg-[#f0f0ee] border border-[#e5e5e3]">
+                                <span className="text-[10px] text-[#787774] px-1.5 py-0.2 rounded bg-[#f0f0ee] border border-[#e5e5e3] shrink-0">
                                   รับเฉพาะเพศหญิง
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-[#787774] line-clamp-1 mb-1">
-                              "{camp.textToRead}"
-                            </p>
+
+                            {/* 1. คำอธิบายเพิ่มเติม (แสดงใต้ชื่อหัวข้อ) */}
                             {camp.description && (
-                              <p className="text-[11px] text-[#9b9a97]">{camp.description}</p>
+                              <p className="text-xs text-[#787774] line-clamp-1 mb-2 leading-relaxed">
+                                {camp.description}
+                              </p>
                             )}
+
+                            {/* 2. กรอบข้อความคำที่ต้องพูดอย่างชัดเจน */}
+                            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-[#f7f6f3] border border-[#e9e9e7] max-w-full">
+                              <span className="text-[10px] uppercase font-semibold text-[#9b9a97] tracking-wider shrink-0">
+                                ข้อความที่ต้องพูด:
+                              </span>
+                              <span className="text-xs text-[#37352f] font-medium truncate">
+                                "{camp.textToRead}"
+                              </span>
+                            </div>
                           </div>
                         </div>
 
