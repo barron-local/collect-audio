@@ -51,7 +51,7 @@ export function App() {
 
       // กรณีที่ 1: เคยเลือกเพศแล้ว แต่ไปแอบลบค่าใน localStorage
       if (!saved && hasEverSelected) {
-        setTamperWarning('ตรวจพบการพยายามลบข้อมูลเพศในระบบ ระบบรับรู้การกระทำทั้งหมดและคืนค่าเดิมให้เรียบร้อย');
+        setTamperWarning('ระบบความปลอดภัยตรวจพบว่าคุณกำลังลบหรือดัดแปลงพื้นที่จัดเก็บข้อมูล (LocalStorage) เรารู้และบันทึกประวัติการกระทำของคุณทั้งหมดไว้แล้ว และได้ทำการกู้คืนข้อมูลเดิมกลับมาเรียบร้อย');
         setUserGender('male');
         await saveVerifiedGender('male');
         return;
@@ -65,7 +65,7 @@ export function App() {
       // กรณีที่ 2: มีค่า แต่ Signature ไม่ตรง (แอบพิมพ์แก้ค่าใน DevTools)
       const isValid = await verifyGenderIntegrity(saved);
       if (!isValid) {
-        setTamperWarning(`ตรวจพบการแก้ไขข้อมูลเพศใน LocalStorage โดยไม่ผ่านระบบ ระบบรับรู้การกระทำทั้งหมดและคืนค่าเดิมให้เรียบร้อย`);
+        setTamperWarning(`ระบบความปลอดภัยตรวจพบว่าคุณกำลังแทรกแซงและแก้ไขค่าข้อมูลในเครื่องโดยไม่ผ่านระบบ เรารู้และบันทึกประวัติการกระทำของคุณทั้งหมดไว้แล้ว และได้ทำการบังคับคืนค่าเดิมทันที`);
         const restoredGender = saved === 'female' ? 'male' : 'female';
         setUserGender(restoredGender);
         await saveVerifiedGender(restoredGender);
@@ -274,16 +274,21 @@ export function App() {
             />
           ) : (
             <div className="max-w-4xl mx-auto px-6 py-12">
-              {/* Tamper Warning Banner (สไตล์ Notion Alert) */}
+              {/* Tamper Warning Banner (สไตล์ Notion Alert แบบจริงจัง) */}
               {tamperWarning && (
-                <div className="mb-6 p-4 rounded-lg bg-[#fdf5f5] border border-[#f7d7d7] text-xs text-[#eb5757] flex items-start justify-between gap-3 shadow-xs">
+                <div className="mb-6 p-4 rounded-lg bg-[#2e0909] border border-[#eb5757] text-xs text-[#ffb4b4] flex items-start justify-between gap-3 shadow-md">
                   <div className="leading-relaxed">
-                    <span className="font-semibold block mb-0.5 text-sm">⚠️ ตรวจพบการพยายามแก้ไขข้อมูล</span>
-                    {tamperWarning}
+                    <span className="font-bold block mb-1 text-sm text-[#ff6b6b] flex items-center gap-1.5 font-mono">
+                      <span>🚨 SECURITY AUDIT WARNING:</span>
+                      <span className="text-xs uppercase tracking-wider font-sans font-normal text-[#ffb4b4]">ตรวจพบพฤติกรรมดัดแปลงข้อมูล</span>
+                    </span>
+                    <p className="text-white/90 font-medium">
+                      {tamperWarning}
+                    </p>
                   </div>
                   <button
                     onClick={() => setTamperWarning(null)}
-                    className="text-[#eb5757] hover:text-[#c53b3b] font-medium text-xs cursor-pointer shrink-0"
+                    className="text-[#ffb4b4] hover:text-white bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded text-xs transition cursor-pointer shrink-0 mt-0.5"
                   >
                     รับทราบ
                   </button>
