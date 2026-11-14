@@ -48,15 +48,11 @@ export async function exportCampaignZip(
     }))
   };
 
-  // Helper to compute real SHA-256 hash of an ArrayBuffer
-  const computeSha256 = async (buffer: ArrayBuffer): Promise<string> => {
-    try {
-      const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    } catch {
-      return Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
-    }
+  // Helper to compute real cryptographic SHA-256 hash using native Web Crypto API
+  const computeSha256 = async (data: BufferSource): Promise<string> => {
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   };
 
   const checksumLines: string[] = [];
